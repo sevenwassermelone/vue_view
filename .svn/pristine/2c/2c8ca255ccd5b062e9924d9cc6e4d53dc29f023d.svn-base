@@ -1,0 +1,247 @@
+<template>
+<!-- 数据清洗列表 -->
+<div class="bg-white p-6 rounded-lg shadow-sm mb-6">
+                <div class="flex justify-between items-center mb-6">
+                    <div class="text-lg font-medium">数据清洗</div>
+                    <div class="flex items-center space-x-4">
+                        <el-select v-model="deviceFilter" placeholder="设备类型" class="w-44 !rounded-button">
+                            <el-option label="全部设备" value="" />
+                            <el-option label="居民水表" value="residential" />
+                            <el-option label="非居民水表" value="non_residential" />
+                            <el-option label="消火栓" value="hydrant" />
+                            <el-option label="智能井盖" value="manhole" />
+                        </el-select>
+                        <el-select v-model="statusFilter" placeholder="清洗状态" class="w-44 !rounded-button">
+                            <el-option label="全部状态" value="" />
+                            <el-option label="清洗成功" value="清洗成功" />
+                            <el-option label="清洗中" value="清洗中" />
+                            <el-option label="清洗失败" value="清洗失败" />
+                        </el-select>
+                        <el-button-group class="!rounded-button">
+                            <el-button type="primary" @click="startClean">
+                                <el-icon class="mr-2">
+                                    <Delete />
+                                </el-icon>开始清洗
+                            </el-button>
+                            <el-button type="primary" @click="openRules">
+                                <el-icon class="mr-2">
+                                    <Setting />
+                                </el-icon>清洗规则
+                            </el-button>
+                        </el-button-group>
+                    </div>
+                </div>
+                <el-table :data="filteredRepairHistory" stripe>
+                    <el-table-column prop="time" label="清洗时间" width="180" />
+                    <el-table-column prop="type" label="清洗类型" width="120" />
+                    <el-table-column prop="deviceType" label="设备类型" width="120" />
+                    <el-table-column prop="dataRange" label="数据范围" width="240" />
+                    <el-table-column prop="affectedCount" label="清洗记录数" width="120" />
+                    <el-table-column prop="status" label="清洗状态" width="120">
+                        <template #default="{ row }">
+                            <el-tag
+                                :type="row.status === '清洗成功' ? 'success' : row.status === '清洗中' ? 'warning' : 'danger'">
+                                {{ row.status }}
+                            </el-tag>
+                            <el-dialog v-model="showBatchRepair" title="批量数据修复" width="600px" destroy-on-close>
+                                <el-form label-width="100px">
+                                    <el-form-item label="设备类型">
+                                        <el-select v-model="batchForm.deviceType" placeholder="请选择设备类型"
+                                            class="w-full !rounded-button">
+                                            <el-option label="居民水表" value="residential" />
+                                            <el-option label="非居民水表" value="non_residential" />
+                                            <el-option label="消火栓" value="hydrant" />
+                                            <el-option label="智能井盖" value="manhole" />
+                                        </el-select>
+                                    </el-form-item>
+                                    <el-form-item label="时间范围">
+                                        <el-date-picker v-model="batchForm.timeRange" type="datetimerange"
+                                            range-separator="至" start-placeholder="开始时间" end-placeholder="结束时间"
+                                            class="w-full !rounded-button" />
+                                    </el-form-item>
+                                    <el-form-item label="修复方法">
+                                        <el-select v-model="batchForm.repairMethod" placeholder="请选择修复方法"
+                                            class="w-full !rounded-button">
+                                            <el-option label="手动修复" value="manual" />
+                                            <el-option label="固定值" value="fixed" />
+                                            <el-option label="平均值" value="average" />
+                                            <el-option label="随机值" value="random" />
+                                            <el-option label="斜率" value="slope" />
+                                            <el-option label="清除" value="clear" />
+                                        </el-select>
+                                    </el-form-item>
+                                    <el-form-item label="修复值" v-if="batchForm.repairMethod === 'fixed'">
+                                        <el-input v-model="batchForm.value" placeholder="请输入固定值"
+                                            class="!rounded-button" />
+                                    </el-form-item>
+                                </el-form>
+                                <template #footer>
+                                    <div class="flex justify-end space-x-4">
+                                        <el-button @click="showBatchRepair = false"
+                                            class="!rounded-button">取消</el-button>
+                                        <el-button type="primary" @click="submitBatchRepair" class="!rounded-button">
+                                            <el-icon class="mr-2">
+                                                <Check />
+                                            </el-icon>确认修复
+                                        </el-button>
+                                    </div>
+                                </template>
+                            </el-dialog>
+                        </template>
+                    </el-table-column>
+                    <el-table-column prop="operator" label="操作人" width="120" />
+                    <el-table-column label="操作" width="180">
+                        <template #default="{ row }">
+                            <div class="flex items-center space-x-2">
+                                <el-button type="primary" link @click="viewRepairDetail(row)">
+                                    <el-icon>
+                                        <View />
+                                    </el-icon>详情
+                                </el-button>
+                                <el-button type="warning" link v-if="row.status === '修复失败'" @click="retryRepair(row)">
+                                    <el-icon>
+                                        <Refresh />
+                                    </el-icon>重试
+                                </el-button>
+                            </div>
+                            <!-- 批量修复弹窗 -->
+                            <el-dialog v-model="showBatchRepair" title="批量数据修复" width="600px" destroy-on-close>
+                                <el-form label-width="100px">
+                                    <el-form-item label="设备类型">
+                                        <el-select v-model="batchForm.deviceType" placeholder="请选择设备类型"
+                                            class="w-full !rounded-button">
+                                            <el-option label="居民水表" value="residential" />
+                                            <el-option label="非居民水表" value="non_residential" />
+                                            <el-option label="消火栓" value="hydrant" />
+                                            <el-option label="智能井盖" value="manhole" />
+                                        </el-select>
+                                    </el-form-item>
+                                    <el-form-item label="时间范围">
+                                        <el-date-picker v-model="batchForm.timeRange" type="datetimerange"
+                                            range-separator="至" start-placeholder="开始时间" end-placeholder="结束时间"
+                                            class="w-full !rounded-button" />
+                                    </el-form-item>
+                                    <el-form-item label="修复方法">
+                                        <el-select v-model="batchForm.repairMethod" placeholder="请选择修复方法"
+                                            class="w-full !rounded-button">
+                                            <el-option label="手动修复" value="manual" />
+                                            <el-option label="固定值" value="fixed" />
+                                            <el-option label="平均值" value="average" />
+                                            <el-option label="随机值" value="random" />
+                                            <el-option label="斜率" value="slope" />
+                                            <el-option label="清除" value="clear" />
+                                        </el-select>
+                                    </el-form-item>
+                                    <el-form-item label="修复值" v-if="batchForm.repairMethod === 'fixed'">
+                                        <el-input v-model="batchForm.value" placeholder="请输入固定值"
+                                            class="!rounded-button" />
+                                    </el-form-item>
+                                </el-form>
+                                <template #footer>
+                                    <div class="flex justify-end space-x-4">
+                                        <el-button @click="showBatchRepair = false"
+                                            class="!rounded-button">取消</el-button>
+                                        <el-button type="primary" @click="submitBatchRepair" class="!rounded-button">
+                                            <el-icon class="mr-2">
+                                                <Check />
+                                            </el-icon>确认修复
+                                        </el-button>
+                                    </div>
+                                </template>
+                            </el-dialog>
+                        </template>
+                    </el-table-column>
+                </el-table>
+                <el-pagination class="mt-4 flex justify-end" v-model:current-page="currentPage"
+                    v-model:page-size="pageSize" :total="total" :page-sizes="[10, 20, 50, 100]"
+                    layout="total, sizes, prev, pager, next" />
+            </div>
+</template>
+<script lang="ts" setup>
+// 数据清洗
+import { ref, onMounted, watch, nextTick, computed, reactive } from 'vue';
+import * as echarts from 'echarts';
+import { Monitor, DataLine, Setting, Lock, Connection, Tools, Fold, Expand, HomeFilled, Timer, Warning, TrendCharts, Odometer, DocumentDelete, Download, Edit, Refresh, Delete, Position, Collection, Link, Goods, SetUp, FolderOpened, Share, Management, Key, User, UserFilled, CircleCheck, Notebook, Guide, Bell, Document, Service, Search, View, List, Grid, Close, ArrowUp, ArrowDown, Check, Upload } from '@element-plus/icons-vue';
+// 删除不需要的图表相关导入
+import { ElMessage, ElMessageBox } from 'element-plus';
+
+const isCollapse = ref(false);
+const deviceFilter = ref('');
+const statusFilter = ref('');
+const showBatchRepair = ref(false);
+const batchForm = reactive({
+    deviceType: '',
+    timeRange: [] as string[],
+    repairMethod: '',
+    value: '',
+});
+
+const repairHistory = ref([
+    {
+        time: '2024-01-20 15:30:22',
+        type: '去重清洗',
+        deviceType: '居民水表',
+        dataRange: '2024-01-19 00:00 ~ 2024-01-19 23:59',
+        affectedCount: 245,
+        status: '清洗成功',
+        operator: '张工程师'
+    },
+    {
+        time: '2024-01-20 14:25:18',
+        type: '异常清洗',
+        deviceType: '非居民水表',
+        dataRange: '2024-01-18 08:00 ~ 2024-01-18 20:00',
+        affectedCount: 156,
+        status: '清洗中',
+        operator: '李工程师'
+    },
+    {
+        time: '2024-01-20 13:15:45',
+        type: '噪声清洗',
+        deviceType: '居民水表',
+        dataRange: '2024-01-17 00:00 ~ 2024-01-17 23:59',
+        affectedCount: 89,
+        status: '清洗失败',
+        operator: '王工程师'
+    },
+    {
+        time: '2024-01-20 12:05:33',
+        type: '重复清洗',
+        deviceType: '非居民水表',
+        dataRange: '2024-01-16 00:00 ~ 2024-01-16 23:59',
+        affectedCount: 178,
+        status: '清洗成功',
+        operator: '陈工程师'
+    }
+]);
+
+const filteredRepairHistory = computed(() => {
+    return repairHistory.value.filter(item => {
+        const matchDevice = !deviceFilter.value || item.deviceType === deviceFilter.value;
+        const matchStatus = !statusFilter.value || item.status === statusFilter.value;
+        return matchDevice && matchStatus;
+    });
+});
+const startClean = () => {
+    if (!deviceFilter.value) {
+        ElMessage.warning('请先选择设备类型');
+        return;
+    }
+    batchForm.deviceType = deviceFilter.value;
+    showBatchRepair.value = true;
+};
+const openRules = () => {
+    ElMessageBox.alert('数据清洗规则配置', {
+        title: '清洗规则',
+        message: `
+    1. 重复数据清洗：清除相同时间戳的重复数据
+    2. 异常值清洗：清除超出正常范围的数据
+    3. 噪声数据清洗：清除波动异常的数据点
+    4. 缺失值处理：对缺失数据进行插值处理
+    `,
+        confirmButtonText: '确定'
+    });
+};
+</script>
+<style  scoped>
+</style>

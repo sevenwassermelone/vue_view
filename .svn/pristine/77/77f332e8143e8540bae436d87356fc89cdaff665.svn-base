@@ -1,0 +1,121 @@
+<template>
+            <!-- 解码失败报文分析 -->
+            <div class="bg-white p-6 rounded-lg shadow-sm mb-4">
+                <div class="flex items-center justify-between mb-6">
+                    <div class="flex items-center space-x-4">
+                        <el-icon class="text-2xl text-blue-500">
+                            <DocumentDelete />
+                        </el-icon>
+                        <div>
+                            <h2 class="text-lg font-medium">解码失败报文分析</h2>
+                            <p class="text-gray-500 text-sm mt-1">更新时间：2024-01-20 15:30:25</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <el-select v-model="selectedRegion" placeholder="选择模板" class="!rounded-button">
+                            <el-option label="全部" value="all" />
+                            <el-option label="居民水表" value="water_quality" />
+                            <el-option label="非居民水表" value="flow_meter" />
+                            <el-option label="消火栓" value="pressure" />
+                        </el-select>
+                        <el-date-picker v-model="analysisDate" type="daterange" range-separator="至"
+                            start-placeholder="开始日期" end-placeholder="结束日期" class="!rounded-button" />
+                    </div>
+                </div>
+                <!-- 统计卡片 -->
+                <div class="grid grid-cols-4 gap-4 mb-6">
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <div class="text-gray-500 text-sm mb-2">今日总报文</div>
+                        <div class="text-2xl font-medium">156,234</div>
+                        <div class="text-xs text-blue-500 mt-2">较昨日 +12.5%</div>
+                    </div>
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <div class="text-gray-500 text-sm mb-2">解码失败数</div>
+                        <div class="text-2xl font-medium">1,268</div>
+                        <div class="text-xs text-red-500 mt-2">失败率 0.81%</div>
+                    </div>
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <div class="text-gray-500 text-sm mb-2">未知报文格式</div>
+                        <div class="text-2xl font-medium">526</div>
+                        <div class="text-xs text-orange-500 mt-2">占比 41.5%</div>
+                    </div>
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <div class="text-gray-500 text-sm mb-2">校验和错误</div>
+                        <div class="text-2xl font-medium">742</div>
+                        <div class="text-xs text-orange-500 mt-2">占比 58.5%</div>
+                    </div>
+                </div>
+                <!-- 解码失败报文列表 -->
+                <div class="bg-white rounded-lg">
+                    <el-table :data="messageData" border stripe class="w-full">
+                        <el-table-column prop="time" label="接收时间" width="180" />
+                        <el-table-column prop="hex" label="原始报文" min-width="200">
+                            <template #default="scope">
+                                <el-tag type="info" class="font-mono !rounded-button">{{ scope.row.hex }}</el-tag>
+                            </template>
+                        </el-table-column>
+                        <el-table-column prop="parsed" label="解析结果" min-width="250">
+                            <template #default="scope">
+                                <el-tag :type="scope.row.status === 'success' ? 'success' : 'danger'"
+                                    class="!rounded-button">
+                                    {{ scope.row.parsed }}
+                                </el-tag>
+                            </template>
+                        </el-table-column>
+                        <el-table-column label="操作" width="150">
+                            <template #default="scope">
+                                <div class="flex space-x-2">
+                                    <el-button type="primary" size="small" class="!rounded-button whitespace-nowrap">
+                                        <el-icon>
+                                            <View />
+                                        </el-icon>
+                                        详情
+                                    </el-button>
+                                    <el-button type="success" size="small" class="!rounded-button whitespace-nowrap">
+                                        <el-icon>
+                                            <Edit />
+                                        </el-icon>
+                                        修复
+                                    </el-button>
+                                </div>
+                            </template>
+                        </el-table-column>
+                    </el-table>
+                </div>
+            </div>
+</template>
+<script lang="ts" setup>
+// 解析失败报文
+import { ref, onMounted, watch, nextTick, computed } from 'vue';
+import { Monitor, DataLine, Setting, Lock, Connection, Tools, Fold, Expand, HomeFilled, Timer, Warning, TrendCharts, Odometer, DocumentDelete, Download, Edit, Refresh, Delete, Position, Collection, Link, Goods, SetUp, FolderOpened, Share, Management, Key, User, UserFilled, CircleCheck, Notebook, Guide, Bell, Document, Service, Search, View, List, Grid, Close, ArrowUp, ArrowDown } from '@element-plus/icons-vue';
+// 删除不需要的图表相关导入
+import { ElMessage, ElMessageBox } from 'element-plus';
+
+const modelType = ref('');
+const selectedRegion = ref('all');
+const analysisDate = ref([new Date(2024, 0, 1), new Date()]);
+const searchDevice = ref('');
+const messageData = ref([
+    {
+        time: '2025-01-20 14:35:22',
+        hex: '0A 45 67 89 BC DE',
+        parsed: 'pH:7.2,Turb:0.35,Cl:0.42',
+        status: 'success'
+    },
+    {
+        time: '2025-01-20 14:34:22',
+        hex: '0A 45 67 89 BC FF',
+        parsed: 'Error: Invalid checksum',
+        status: 'error'
+    },
+    // 更多数据...
+]);
+// 查看详情
+const viewDetail = (row: any) => {
+    ElMessageBox.alert(`预警详情：${row.type} - ${row.value}`, '预警详情', {
+        confirmButtonText: '确定'
+    });
+};
+</script>
+<style  scoped>
+</style>

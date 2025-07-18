@@ -1,0 +1,579 @@
+<!-- 代码已包含 CSS：使用 TailwindCSS , 安装 TailwindCSS 后方可看到布局样式效果 -->
+<template>
+    <div class="min-h-screen bg-gray-50">
+        <!-- 顶部导航 -->
+        <header class="h-16 bg-[#1e88e5] shadow-sm fixed w-full top-0 z-50 flex items-center justify-between px-6">
+            <div class="flex items-center">
+                <el-icon class="text-xl cursor-pointer text-white/90 hover:text-white mr-3"
+                    @click="isCollapse = !isCollapse">
+                    <Fold v-if="!isCollapse" />
+                    <Expand v-else />
+                </el-icon>
+                <img :src="logoUrl" alt="水务物联网平台" class="h-10 w-10 object-cover" style="height: 40px; width: 40px;">
+                <h1 class="ml-3 text-xl font-medium text-white">水务物联网平台</h1>
+            </div>
+            <div class="flex items-center space-x-6">
+                <el-icon class="text-xl cursor-pointer text-white/90 hover:text-white">
+                    <FullScreen />
+                </el-icon>
+                <el-badge :value="3" class="cursor-pointer">
+                    <el-icon class="text-xl text-white/90 hover:text-white">
+                        <Bell />
+                    </el-icon>
+                </el-badge>
+                <el-dropdown>
+                    <span class="flex items-center cursor-pointer">
+                        <img :src="avatarUrl" class="w-8 h-8 rounded-full object-cover">
+                        <span class="ml-2 text-white">陈思远</span>
+                    </span>
+                    <template #dropdown>
+                        <el-dropdown-menu>
+                            <el-dropdown-item>个人信息</el-dropdown-item>
+                            <el-dropdown-item>退出登录</el-dropdown-item>
+                        </el-dropdown-menu>
+                    </template>
+                </el-dropdown>
+            </div>
+        </header>
+        <!-- 左侧菜单 -->
+        <aside class="fixed left-0 top-16 bottom-0 bg-white shadow-sm overflow-y-auto transition-all duration-300"
+            :class="isCollapse ? 'w-16' : 'w-64'">
+            <el-menu :default-active="activeMenu" class="h-full" :collapse="isCollapse">
+                <template v-for="menu in menus" :key="menu.key">
+                    <el-sub-menu :index="menu.key">
+                        <template #title>
+                            <el-icon>
+                                <Monitor />
+                            </el-icon>
+                            <span>{{ menu.label }}</span>
+                        </template>
+                        <el-menu-item v-for="sub in menu.children" :key="sub.key" :index="sub.key">
+                            <template #title>
+                                <el-icon>
+                                    <component :is="sub.icon" />
+                                </el-icon>
+                                <span>{{ sub.label }}</span>
+                            </template>
+                        </el-menu-item>
+                    </el-sub-menu>
+                </template>
+            </el-menu>
+        </aside>
+        <!-- 主内容区 -->
+        <main class="pt-16 p-6 transition-all duration-300" :class="isCollapse ? 'ml-16' : 'ml-64'">
+            <!-- 搜索过滤栏 -->
+            <div class="bg-white p-6 rounded-lg shadow-sm mb-6">
+                <div class="flex items-center space-x-6">
+                    <el-input v-model="searchQuery" placeholder="搜索设备名称/编号" class="w-48">
+                        <template #prefix>
+                            <el-icon>
+                                <Search />
+                            </el-icon>
+                        </template>
+                    </el-input>
+                    <el-select v-model="deviceType" placeholder="设备类型" class="w-40">
+                        <el-option label="全部类型" value="" />
+                        <el-option label="水质监测" value="water_quality" />
+                        <el-option label="流量计" value="flow_meter" />
+                        <el-option label="压力表" value="pressure_meter" />
+                        <el-option label="水位计" value="level_meter" />
+                        <el-option label="消火栓" value="hydrant" />
+                    </el-select>
+                    <el-select v-model="deviceStatus" placeholder="设备状态" class="w-40">
+                        <el-option label="全部状态" value="" />
+                        <el-option label="在线" value="online" />
+                        <el-option label="离线" value="offline" />
+                        <el-option label="故障" value="fault" />
+                    </el-select>
+                    <el-button type="primary" class="!rounded-button whitespace-nowrap">
+                        <el-icon class="mr-1">
+                            <Search />
+                        </el-icon>
+                        查询
+                    </el-button>
+                    <el-button type="success" class="!rounded-button whitespace-nowrap">
+                        <el-icon class="mr-1">
+                            <Download />
+                        </el-icon>
+                        导出数据
+                    </el-button>
+                    <div class="flex-1 flex justify-end">
+                        <el-button-group>
+                            <el-button type="primary" :class="{ '!bg-blue-600': viewMode === 'list' }"
+                                class="!rounded-none whitespace-nowrap" @click="viewMode = 'list'">
+                                <el-icon class="mr-1">
+                                    <List />
+                                </el-icon>
+                                列表
+                            </el-button>
+                            <el-button type="primary" :class="{ '!bg-blue-600': viewMode === 'card' }"
+                                class="!rounded-none whitespace-nowrap" @click="viewMode = 'card'">
+                                <el-icon class="mr-1">
+                                    <Grid />
+                                </el-icon>
+                                卡片
+                            </el-button>
+                            <el-button type="primary" :class="{ '!bg-blue-600': viewMode === 'map' }"
+                                class="!rounded-none whitespace-nowrap" @click="viewMode = 'map'">
+                                <el-icon class="mr-1">
+                                    <Position />
+                                </el-icon>
+                                地图
+                            </el-button>
+                        </el-button-group>
+                    </div>
+                </div>
+            </div>
+            <!-- 设备列表 -->
+            <div v-if="viewMode === 'list'" class="bg-white rounded-lg shadow-sm">
+                <el-table :data="deviceList" style="width: 100%">
+                    <el-table-column prop="name" label="设备名称" min-width="180" />
+                    <el-table-column prop="code" label="设备编号" min-width="150" />
+                    <el-table-column prop="status" label="状态" width="100">
+                        <template #default="{ row }">
+                            <el-tag :type="row.status === '在线' ? 'success' : row.status === '离线' ? 'info' : 'danger'">
+                                {{ row.status }}
+                            </el-tag>
+                        </template>
+                    </el-table-column>
+                    <el-table-column label="监测数据" min-width="400">
+                        <template #default="{ row }">
+                            <div class="flex space-x-4">
+                                <div v-for="(value, key) in row.metrics" :key="key" class="text-sm">
+                                    <span class="text-gray-500">{{ key }}:</span>
+                                    <span class="ml-1 font-medium">{{ value }}</span>
+                                </div>
+                            </div>
+                        </template>
+                    </el-table-column>
+                    <el-table-column prop="lastUpdate" label="最后更新" min-width="180" />
+                    <el-table-column label="操作" width="180" fixed="right">
+                        <template #default>
+                            <div class="space-x-2">
+                                <el-button type="primary" class="!rounded-button whitespace-nowrap">
+                                    <el-icon>
+                                        <View />
+                                    </el-icon>
+                                </el-button>
+                                <el-button type="warning" class="!rounded-button whitespace-nowrap">
+                                    <el-icon>
+                                        <Setting />
+                                    </el-icon>
+                                </el-button>
+                                <el-button type="success" class="!rounded-button whitespace-nowrap">
+                                    <el-icon>
+                                        <DataLine />
+                                    </el-icon>
+                                </el-button>
+                            </div>
+                        </template>
+                    </el-table-column>
+                </el-table>
+            </div>
+            <div v-else-if="viewMode === 'map'" class="bg-white rounded-lg shadow-sm p-6">
+                <div class="relative">
+                    <img :src="currentMapUrl" alt="Water Infrastructure Map"
+                        class="w-full h-[700px] object-cover rounded-lg" />
+                    <div class="absolute right-4 bottom-4">
+                        <el-button-group>
+                            <el-button type="primary" :class="{ '!bg-blue-600': mapType === 'vector' }"
+                                class="!rounded-none whitespace-nowrap" @click="switchMapType('vector')">
+                                电子地图
+                            </el-button>
+                            <el-button type="primary" :class="{ '!bg-blue-600': mapType === 'satellite' }"
+                                class="!rounded-none whitespace-nowrap" @click="switchMapType('satellite')">
+                                遥感影像
+                            </el-button>
+                        </el-button-group>
+                    </div>
+                    <div class="absolute left-4 bottom-4 bg-white/90 backdrop-blur-sm p-4 rounded-lg shadow-lg">
+                        <h4 class="text-gray-700 font-medium mb-3">图例说明</h4>
+                        <div class="space-y-2">
+                            <div class="flex items-center">
+                                <div class="w-4 h-4 rounded-full bg-green-500 mr-2"></div>
+                                <span class="text-sm text-gray-600">在线设备</span>
+                                <span class="text-xs text-gray-500 ml-2">(38)</span>
+                            </div>
+                            <div class="flex items-center">
+                                <div class="w-4 h-4 rounded-full bg-gray-400 mr-2"></div>
+                                <span class="text-sm text-gray-600">离线设备</span>
+                                <span class="text-xs text-gray-500 ml-2">(5)</span>
+                            </div>
+                            <div class="flex items-center">
+                                <div class="w-4 h-4 rounded-full bg-red-500 mr-2"></div>
+                                <span class="text-sm text-gray-600">故障设备</span>
+                                <span class="text-xs text-gray-500 ml-2">(2)</span>
+                            </div>
+                            <div class="flex items-center">
+                                <div class="w-4 h-4 rounded bg-blue-500 mr-2"></div>
+                                <span class="text-sm text-gray-600">主要管网</span>
+                            </div>
+                            <div class="flex items-center">
+                                <div class="w-4 h-4 rounded bg-blue-300 mr-2"></div>
+                                <span class="text-sm text-gray-600">次要管网</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div v-else-if="viewMode === 'card'" class="grid grid-cols-3 gap-6">
+                <div v-for="device in deviceList" :key="device.id"
+                    class="bg-white rounded-lg shadow-sm hover:shadow-md transition-all p-6">
+                    <div class="flex items-start justify-between mb-4">
+                        <div>
+                            <h3 class="text-lg font-medium mb-2">{{ device.name }}</h3>
+                            <p class="text-gray-500 text-sm">设备编号：{{ device.code }}</p>
+                        </div>
+                        <el-tag :type="device.status === '在线' ? 'success' : device.status === '离线' ? 'info' : 'danger'">
+                            {{ device.status }}
+                        </el-tag>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4 mb-4">
+                        <div v-for="(value, key) in device.metrics" :key="key" class="bg-gray-50 p-3 rounded-lg">
+                            <p class="text-gray-500 text-sm mb-1">{{ key }}</p>
+                            <p class="text-lg font-semibold">{{ value }}</p>
+                        </div>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <p class="text-gray-500 text-sm">最后更新：{{ device.lastUpdate }}</p>
+                        <div class="space-x-2">
+                            <el-button type="primary" class="!rounded-button whitespace-nowrap">
+                                <el-icon>
+                                    <View />
+                                </el-icon>
+                            </el-button>
+                            <el-button type="warning" class="!rounded-button whitespace-nowrap">
+                                <el-icon>
+                                    <Setting />
+                                </el-icon>
+                            </el-button>
+                            <el-button type="success" class="!rounded-button whitespace-nowrap">
+                                <el-icon>
+                                    <DataLine />
+                                </el-icon>
+                            </el-button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- 分页器 -->
+            <div class="flex justify-center mt-6">
+                <el-pagination v-model:current-page="currentPage" v-model:page-size="pageSize"
+                    :page-sizes="[9, 18, 36, 72]" :total="total" layout="total, sizes, prev, pager, next" />
+            </div>
+        </main>
+    </div>
+</template>
+<script lang="ts" setup>
+import { ref, onMounted, watch, nextTick, computed } from 'vue';
+import { Monitor, DataLine, Setting, Lock, Connection, Tools, Fold, Expand, HomeFilled, Timer, Warning, TrendCharts, Odometer, DocumentDelete, Download, Edit, Refresh, Delete, Position, Collection, Link, Goods, SetUp, FolderOpened, Share, Management, Key, User, UserFilled, CircleCheck, Notebook, Guide, Bell, Document, Service, Search, View, List, Grid } from '@element-plus/icons-vue';
+const logoUrl = 'https://ai-public.mastergo.com/ai/img_res/2ea0f9434e9828f951b832855073fd22.jpg';
+const avatarUrl = 'https://ai-public.mastergo.com/ai/img_res/02eb0a5c2d4bd29638dcd199c1bd8b0a.jpg';
+const isCollapse = ref(false);
+const activeMenu = ref('1-2');
+const searchQuery = ref('');
+const deviceType = ref('');
+const deviceStatus = ref('');
+const viewMode = ref('card');
+const currentPage = ref(1);
+const pageSize = ref(9);
+const total = ref(100);
+const deviceList = ref([
+    {
+        id: 1,
+        name: 'pH值在线监测仪',
+        code: 'WQ24010001',
+        status: '在线',
+        metrics: {
+            'pH 值': '7.2',
+            '水温': '23.5℃',
+            '浊度': '0.35 NTU',
+            '电导率': '358 μS/cm'
+        },
+        lastUpdate: '2024-01-20 15:30:22'
+    },
+    {
+        id: 2,
+        name: '智能压力监测器',
+        code: 'PM24010002',
+        status: '在线',
+        metrics: {
+            '管网压力': '0.42 MPa',
+            '流速': '1.2 m/s',
+            '瞬时流量': '125 m³/h',
+            '信号强度': '86%'
+        },
+        lastUpdate: '2024-01-20 15:30:18'
+    },
+    {
+        id: 3,
+        name: '电磁流量计',
+        code: 'FM24010003',
+        status: '离线',
+        metrics: {
+            '累计流量': '8956.3 m³',
+            '瞬时流量': '0 m³/h',
+            '流速': '0 m/s',
+            '电池电量': '26%'
+        },
+        lastUpdate: '2024-01-20 15:28:45'
+    },
+    {
+        id: 4,
+        name: '水质多参数分析仪',
+        code: 'WQ24010004',
+        status: '在线',
+        metrics: {
+            '余氯': '0.35 mg/L',
+            '浊度': '0.28 NTU',
+            'pH值': '7.1',
+            '电导率': '365 μS/cm'
+        },
+        lastUpdate: '2024-01-20 15:30:15'
+    },
+    {
+        id: 5,
+        name: '智能水位计',
+        code: 'LM24010005',
+        status: '故障',
+        metrics: {
+            '水位': '错误',
+            '温度': '22.5℃',
+            '电池电量': '85%',
+            '信号强度': '92%'
+        },
+        lastUpdate: '2024-01-20 15:25:30'
+    },
+    {
+        id: 6,
+        name: '管网压力监测仪',
+        code: 'PM24010006',
+        status: '在线',
+        metrics: {
+            '管网压力': '0.38 MPa',
+            '流速': '1.5 m/s',
+            '瞬时流量': '156 m³/h',
+            '信号强度': '78%'
+        },
+        lastUpdate: '2024-01-20 15:30:20'
+    },
+    {
+        id: 7,
+        name: '消火栓监测器',
+        code: 'HD24010007',
+        status: '在线',
+        metrics: {
+            '压力': '0.40 MPa',
+            '温度': '15.5℃',
+            '撞击状态': '正常',
+            '信号强度': '95%'
+        },
+        lastUpdate: '2024-01-20 15:30:12'
+    },
+    {
+        id: 8,
+        name: '多普勒流量计',
+        code: 'FM24010008',
+        status: '在线',
+        metrics: {
+            '瞬时流量': '89 m³/h',
+            '累计流量': '12385.6 m³',
+            '流速': '0.8 m/s',
+            '电池电量': '92%'
+        },
+        lastUpdate: '2024-01-20 15:30:08'
+    },
+    {
+        id: 9,
+        name: '水质在线分析仪',
+        code: 'WQ24010009',
+        status: '在线',
+        metrics: {
+            '浊度': '0.31 NTU',
+            'pH值': '7.3',
+            '余氯': '0.32 mg/L',
+            '电导率': '362 μS/cm'
+        },
+        lastUpdate: '2024-01-20 15:30:05'
+    }
+]);
+const menus = [
+    {
+        key: '1',
+        label: '采集监控',
+        icon: 'Monitor',
+        children: [
+            { key: '1-1', label: '平台总览', icon: 'HomeFilled' },
+            { key: '1-2', label: '实时监测', icon: 'Timer' },
+            { key: '1-3', label: '实时报警', icon: 'Warning' }
+        ]
+    },
+    {
+        key: '2',
+        label: '数据分析',
+        icon: 'DataLine',
+        children: [
+            { key: '2-1', label: '单点分析', icon: 'TrendCharts' },
+            { key: '2-2', label: '设备完好率', icon: 'Odometer' },
+            { key: '2-3', label: '解码失败报文', icon: 'DocumentDelete' },
+            { key: '2-4', label: '大屏可视化', icon: 'Monitor' },
+            { key: '2-5', label: '历史数据', icon: 'Document' },
+            { key: '2-6', label: '报表统计', icon: 'DataLine' }
+        ]
+    },
+    {
+        key: '3',
+        label: '运行管理',
+        icon: 'Setting',
+        children: [
+            { key: '3-1', label: '批量导出', icon: 'Download' },
+            { key: '3-2', label: '数据填报', icon: 'Edit' },
+            { key: '3-3', label: '数据修复', icon: 'Refresh' },
+            { key: '3-4', label: '数据清洗', icon: 'Delete' },
+            { key: '3-5', label: '远程设置', icon: 'Position' },
+            { key: '3-6', label: '标签管理', icon: 'Collection' }
+        ]
+    },
+    {
+        key: '4',
+        label: '接入管理',
+        icon: 'Connection',
+        children: [
+            { key: '4-1', label: '接入管理', icon: 'Link' },
+            { key: '4-2', label: '产品管理', icon: 'Goods' },
+            { key: '4-3', label: '设备管理', icon: 'SetUp' },
+            { key: '4-4', label: '分组管理', icon: 'FolderOpened' },
+            { key: '4-5', label: '网络组件', icon: 'Share' },
+            { key: '4-6', label: '编解码插件', icon: 'Management' }
+        ]
+    },
+    {
+        key: '5',
+        label: '权限管理',
+        icon: 'Lock',
+        children: [
+            { key: '5-1', label: '数据授权', icon: 'Key' },
+            { key: '5-2', label: '用户管理', icon: 'User' },
+            { key: '5-3', label: '角色管理', icon: 'UserFilled' },
+            { key: '5-4', label: '权限分配', icon: 'CircleCheck' },
+            { key: '5-5', label: '访问日志', icon: 'Notebook' }
+        ]
+    },
+    {
+        key: '6',
+        label: '系统设置',
+        icon: 'Tools',
+        children: [
+            { key: '6-1', label: '网络配置', icon: 'Guide' },
+            { key: '6-2', label: '告警配置', icon: 'Bell' },
+            { key: '6-3', label: '系统日志', icon: 'Document' },
+            { key: '6-4', label: '系统维护', icon: 'Service' }
+        ]
+    }
+];
+const dataCards = [
+    {
+        label: '设备总数',
+        value: '240,510',
+        icon: 'Monitor',
+        iconColor: 'text-blue-500',
+        trend: '较上月增长 8.5%',
+        trendColor: 'text-green-500'
+    },
+    {
+        label: '设备在线率',
+        value: '98.6%',
+        icon: 'Connection',
+        iconColor: 'text-green-500',
+        trend: '较昨日上升 0.3%',
+        trendColor: 'text-green-500'
+    },
+    {
+        label: '设备抄见率',
+        value: '96.8%',
+        icon: 'DataLine',
+        iconColor: 'text-blue-500',
+        trend: '较昨日上升 0.5%',
+        trendColor: 'text-green-500'
+    },
+    {
+        label: '数据完整率',
+        value: '99.2%',
+        icon: 'CircleCheck',
+        iconColor: 'text-green-500',
+        trend: '维持稳定水平',
+        trendColor: 'text-gray-500'
+    },
+    {
+        label: '报文并发量',
+        value: '1,826/s',
+        icon: 'Share',
+        iconColor: 'text-purple-500',
+        trend: '高峰期 2,350/s',
+        trendColor: 'text-orange-500'
+    }
+];
+const errorList = [
+    {
+        time: '2024-01-20 14:30:22',
+        system: '水质监测系统',
+        type: '数据访问超时',
+        count: 15,
+        status: '未解决'
+    },
+    {
+        time: '2024-01-20 13:15:46',
+        system: '设备管理平台',
+        type: '并发超限',
+        count: 28,
+        status: '已解决'
+    },
+    {
+        time: '2024-01-20 12:05:33',
+        system: '数据总线系统',
+        type: '队列堆积',
+        count: 156,
+        status: '处理中'
+    },
+    {
+        time: '2024-01-20 11:30:12',
+        system: '报表统计系统',
+        type: '查询响应慢',
+        count: 45,
+        status: '已解决'
+    }
+];
+const mapType = ref('vector');
+const vectorMapUrl = 'https://ai-public.mastergo.com/ai/img_res/0a867d6b338b2f71f36e847363d80e4f.jpg';
+const satelliteMapUrl = 'https://ai-public.mastergo.com/ai/img_res/513b6c378c85afd0ded3e6ac6d035c88.jpg';
+const currentMapUrl = computed(() => mapType.value === 'vector' ? vectorMapUrl : satelliteMapUrl);
+
+const switchMapType = (type: 'vector' | 'satellite') => {
+    mapType.value = type;
+};
+</script>
+<style scoped>
+.el-menu {
+    border-right: none;
+}
+
+:deep(.el-menu-item.is-active) {
+    background-color: #e6f4ff;
+    color: #1890ff;
+}
+
+:deep(.el-table .cell) {
+    white-space: nowrap;
+}
+
+:deep(.el-date-editor.el-input) {
+    width: 240px;
+}
+
+/* 去除number类型input的箭头 */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+</style>

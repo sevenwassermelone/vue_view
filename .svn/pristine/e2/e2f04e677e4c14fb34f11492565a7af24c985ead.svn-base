@@ -1,0 +1,452 @@
+<template>
+    <div class="min-h-[calc(100vh-88px)] bg-white rounded-lg shadow-sm p-6">
+                <h2 class="text-xl font-medium mb-6">报表统计</h2>
+                <el-tabs v-model="activeTab" class="demo-tabs">
+                    <el-tab-pane label="居民水表" name="residential">
+                        <div class="grid grid-cols-3 gap-6 mb-6">
+                            <div class="bg-blue-50 rounded-lg p-4">
+                                <div class="flex items-center justify-between mb-4">
+                                    <span class="text-gray-600">总数</span>
+                                    <el-icon class="text-blue-500 text-xl">
+                                        <Platform />
+                                    </el-icon>
+                                </div>
+                                <div class="text-2xl font-semibold mb-2">156,420</div>
+                                <div class="text-sm text-gray-500">在线率：98.2%</div>
+                            </div>
+                            <div class="bg-green-50 rounded-lg p-4">
+                                <div class="flex items-center justify-between mb-4">
+                                    <span class="text-gray-600">今日抄表</span>
+                                    <el-icon class="text-green-500 text-xl">
+                                        <DataLine />
+                                    </el-icon>
+                                </div>
+                                <div class="text-2xl font-semibold mb-2">152,890</div>
+                                <div class="text-sm text-gray-500">抄见率：97.6%</div>
+                            </div>
+                            <div class="bg-yellow-50 rounded-lg p-4">
+                                <div class="flex items-center justify-between mb-4">
+                                    <span class="text-gray-600">异常数据</span>
+                                    <el-icon class="text-yellow-500 text-xl">
+                                        <Warning />
+                                    </el-icon>
+                                </div>
+                                <div class="text-2xl font-semibold mb-2">324</div>
+                                <div class="text-sm text-gray-500">异常率：0.21%</div>
+                            </div>
+                        </div>
+                        <!-- 报表分类 -->
+                        <div class="mb-6">
+                            <el-radio-group v-model="reportType" class="mb-4">
+                                <el-radio-button label="daily">日报</el-radio-button>
+                                <el-radio-button label="weekly">周报</el-radio-button>
+                                <el-radio-button label="monthly">月报</el-radio-button>
+                                <el-radio-button label="yearly">年报</el-radio-button>
+                            </el-radio-group>
+                            <el-tabs v-model="reportCategory">
+                                <el-tab-pane label="区域划分" name="area">
+                                    <el-table :data="areaTableData" border stripe>
+                                        <el-table-column prop="area" label="区域" />
+                                        <el-table-column prop="total" label="水表总数" />
+                                        <el-table-column prop="online" label="在线数量" />
+                                        <el-table-column prop="onlineRate" label="在线率" />
+                                        <el-table-column prop="readingCount" label="抄表数量" />
+                                        <el-table-column prop="readingRate" label="抄见率" />
+                                        <el-table-column prop="waterUsage" label="用水量(m³)" />
+                                        <el-table-column prop="anomalyCount" label="异常数" />
+                                    </el-table>
+                                    <!-- 区域日报图表 -->
+                                    <div class="mt-6">
+                                        <div class="text-lg font-medium mb-4">区域日报统计</div>
+                                        <div ref="areaStatChart" class="w-full h-[400px]"></div>
+                                    </div>
+                                </el-tab-pane>
+                                <el-tab-pane label="厂商划分" name="vendor" >
+                                    <el-table :data="vendorTableData" border stripe>
+                                        <el-table-column prop="vendor" label="厂商" />
+                                        <el-table-column prop="total" label="水表总数" />
+                                        <el-table-column prop="online" label="在线数量" />
+                                        <el-table-column prop="onlineRate" label="在线率" />
+                                        <el-table-column prop="readingCount" label="抄表数量" />
+                                        <el-table-column prop="readingRate" label="抄见率" />
+                                        <el-table-column prop="waterUsage" label="用水量(m³)" />
+                                        <el-table-column prop="anomalyCount" label="异常数" />
+                                    </el-table>
+                                    <!-- 厂商日报图表 -->
+                                    <div class="mt-6">
+                                        <div class="text-lg font-medium mb-4">厂商日报统计</div>
+                                        <div ref="csStatChart" class="w-full h-[400px]" style="width: 1200px;"></div>
+                                    </div>
+                                </el-tab-pane>
+                            </el-tabs>
+                        </div>
+                    </el-tab-pane>
+                    <el-tab-pane label="非居民水表" name="commercial">
+                        <div class="grid grid-cols-3 gap-6">
+                            <div class="bg-purple-50 rounded-lg p-4">
+                                <div class="flex items-center justify-between mb-4">
+                                    <span class="text-gray-600">总数</span>
+                                    <el-icon class="text-purple-500 text-xl">
+                                        <Platform />
+                                    </el-icon>
+                                </div>
+                                <div class="text-2xl font-semibold mb-2">42,680</div>
+                                <div class="text-sm text-gray-500">在线率：99.1%</div>
+                            </div>
+                            <div class="bg-indigo-50 rounded-lg p-4">
+                                <div class="flex items-center justify-between mb-4">
+                                    <span class="text-gray-600">今日抄表</span>
+                                    <el-icon class="text-indigo-500 text-xl">
+                                        <DataLine />
+                                    </el-icon>
+                                </div>
+                                <div class="text-2xl font-semibold mb-2">41,950</div>
+                                <div class="text-sm text-gray-500">抄见率：98.3%</div>
+                            </div>
+                            <div class="bg-red-50 rounded-lg p-4">
+                                <div class="flex items-center justify-between mb-4">
+                                    <span class="text-gray-600">异常数据</span>
+                                    <el-icon class="text-red-500 text-xl">
+                                        <Warning />
+                                    </el-icon>
+                                </div>
+                                <div class="text-2xl font-semibold mb-2">86</div>
+                                <div class="text-sm text-gray-500">异常率：0.20%</div>
+                            </div>
+                        </div>
+                    </el-tab-pane>
+                    <el-tab-pane label="消火栓" name="hydrant">
+                        <div class="grid grid-cols-3 gap-6">
+                            <div class="bg-orange-50 rounded-lg p-4">
+                                <div class="flex items-center justify-between mb-4">
+                                    <span class="text-gray-600">总数</span>
+                                    <el-icon class="text-orange-500 text-xl">
+                                        <Platform />
+                                    </el-icon>
+                                </div>
+                                <div class="text-2xl font-semibold mb-2">3,560</div>
+                                <div class="text-sm text-gray-500">在线率：97.8%</div>
+                            </div>
+                            <div class="bg-pink-50 rounded-lg p-4">
+                                <div class="flex items-center justify-between mb-4">
+                                    <span class="text-gray-600">今日检测</span>
+                                    <el-icon class="text-pink-500 text-xl">
+                                        <DataLine />
+                                    </el-icon>
+                                </div>
+                                <div class="text-2xl font-semibold mb-2">3,482</div>
+                                <div class="text-sm text-gray-500">检测率：97.8%</div>
+                            </div>
+                            <div class="bg-cyan-50 rounded-lg p-4">
+                                <div class="flex items-center justify-between mb-4">
+                                    <span class="text-gray-600">异常警报</span>
+                                    <el-icon class="text-cyan-500 text-xl">
+                                        <Warning />
+                                    </el-icon>
+                                </div>
+                                <div class="text-2xl font-semibold mb-2">12</div>
+                                <div class="text-sm text-gray-500">异常率：0.34%</div>
+                            </div>
+                        </div>
+                    </el-tab-pane>
+                    <el-tab-pane label="智能井盖" name="manhole">
+                        <div class="grid grid-cols-3 gap-6">
+                            <div class="bg-teal-50 rounded-lg p-4">
+                                <div class="flex items-center justify-between mb-4">
+                                    <span class="text-gray-600">总数</span>
+                                    <el-icon class="text-teal-500 text-xl">
+                                        <Platform />
+                                    </el-icon>
+                                </div>
+                                <div class="text-2xl font-semibold mb-2">8,920</div>
+                                <div class="text-sm text-gray-500">在线率：96.5%</div>
+                            </div>
+                            <div class="bg-lime-50 rounded-lg p-4">
+                                <div class="flex items-center justify-between mb-4">
+                                    <span class="text-gray-600">今日监测</span>
+                                    <el-icon class="text-lime-500 text-xl">
+                                        <DataLine />
+                                    </el-icon>
+                                </div>
+                                <div class="text-2xl font-semibold mb-2">8,654</div>
+                                <div class="text-sm text-gray-500">监测率：97.0%</div>
+                            </div>
+                            <div class="bg-rose-50 rounded-lg p-4">
+                                <div class="flex items-center justify-between mb-4">
+                                    <span class="text-gray-600">异常警报</span>
+                                    <el-icon class="text-rose-500 text-xl">
+                                        <Warning />
+                                    </el-icon>
+                                </div>
+                                <div class="text-2xl font-semibold mb-2">28</div>
+                                <div class="text-sm text-gray-500">异常率：0.32%</div>
+                            </div>
+                        </div>
+                    </el-tab-pane>
+                </el-tabs>
+            </div>
+</template>
+<script lang="ts" setup>
+// 报表统计
+import { ref, onMounted, watch } from 'vue';
+import * as echarts from 'echarts';
+import { Monitor, DataLine, Setting, Lock, Connection, Tools, Fold, Expand, HomeFilled, Timer, Warning, TrendCharts, Odometer, DocumentDelete, Download, Edit, Refresh, Delete, Position, Collection, Link, Goods, SetUp, FolderOpened, Share, Management, Key, User, UserFilled, CircleCheck, Notebook, Guide, Bell, Document, Service, Platform } from '@element-plus/icons-vue';
+
+const activeTab = ref('residential');
+const reportType = ref('daily');
+const reportCategory = ref('area');
+const areaStatChart = ref<HTMLElement | null>(null);
+const csStatChart = ref<HTMLElement | null>(null);
+const areaTableData = [
+    {
+        area: '东区',
+        total: 38560,
+        online: 37890,
+        onlineRate: '98.3%',
+        readingCount: 37650,
+        readingRate: '97.6%',
+        waterUsage: 156420,
+        anomalyCount: 82
+    },
+    {
+        area: '西区',
+        total: 42680,
+        online: 41950,
+        onlineRate: '98.5%',
+        readingCount: 41680,
+        readingRate: '97.8%',
+        waterUsage: 168540,
+        anomalyCount: 76
+    },
+    {
+        area: '科学城',
+        total: 35420,
+        online: 34860,
+        onlineRate: '98.4%',
+        readingCount: 34520,
+        readingRate: '97.5%',
+        waterUsage: 142360,
+        anomalyCount: 68
+    },
+    {
+        area: '萝岗',
+        total: 39760,
+        online: 39120,
+        onlineRate: '98.4%',
+        readingCount: 38960,
+        readingRate: '98.0%',
+        waterUsage: 159840,
+        anomalyCount: 98
+    }
+];
+const vendorTableData = [
+    {
+        vendor: '深仪兆业',
+        total: 52680,
+        online: 51890,
+        onlineRate: '98.5%',
+        readingCount: 51620,
+        readingRate: '98.0%',
+        waterUsage: 215460,
+        anomalyCount: 96
+    },
+    {
+        vendor: '三川智慧',
+        total: 48920,
+        online: 48120,
+        onlineRate: '98.4%',
+        readingCount: 47860,
+        readingRate: '97.8%',
+        waterUsage: 198640,
+        anomalyCount: 88
+    },
+    {
+        vendor: '新天科技',
+        total: 32460,
+        online: 31890,
+        onlineRate: '98.2%',
+        readingCount: 31640,
+        readingRate: '97.5%',
+        waterUsage: 128920,
+        anomalyCount: 72
+    },
+    {
+        vendor: '兆基仪表',
+        total: 22360,
+        online: 21990,
+        onlineRate: '98.3%',
+        readingCount: 21770,
+        readingRate: '97.4%',
+        waterUsage: 89440,
+        anomalyCount: 68
+    }
+];
+const dateRange = ref([]);
+// 图表初始化
+const dataFetchChart = ref<HTMLElement | null>(null);
+const dataBusChart = ref<HTMLElement | null>(null);
+const deviceDistChart = ref<HTMLElement | null>(null);
+const deviceDistType = ref<'type' | 'vendor' | 'area'>('type');
+
+onMounted(() => {
+    // 区域日报统计图表
+    const areaStatInstance = echarts.init(areaStatChart.value!);
+    areaStatInstance.setOption({
+        animation: false,
+        tooltip: {
+            trigger: 'axis',
+            axisPointer: {
+                type: 'shadow'
+            }
+        },
+        legend: {
+            data: ['用水量', '在线率', '抄见率']
+        },
+        grid: {
+            left: '3%',
+            right: '4%',
+            bottom: '3%',
+            containLabel: true
+        },
+        xAxis: [
+            {
+                type: 'category',
+                data: ['东区', '西区', '科学城', '萝岗', '生物岛', '永和'],
+                axisLabel: {
+                    interval: 0,
+                    rotate: 30
+                }
+            }
+        ],
+        yAxis: [
+            {
+                type: 'value',
+                name: '用水量(m³)',
+                min: 0,
+                max: 200000,
+                position: 'left'
+            },
+            {
+                type: 'value',
+                name: '百分比',
+                min: 90,
+                max: 100,
+                position: 'right',
+                axisLabel: {
+                    formatter: '{value}%'
+                }
+            }
+        ],
+        series: [
+            {
+                name: '用水量',
+                type: 'bar',
+                data: [156420, 168540, 142360, 159840, 145680, 138920],
+                itemStyle: {
+                    color: '#1890ff'
+                }
+            },
+            {
+                name: '在线率',
+                type: 'line',
+                yAxisIndex: 1,
+                data: [98.3, 98.5, 98.4, 98.4, 98.2, 98.1],
+                itemStyle: {
+                    color: '#52c41a'
+                }
+            },
+            {
+                name: '抄见率',
+                type: 'line',
+                yAxisIndex: 1,
+                data: [97.6, 97.8, 97.5, 98.0, 97.4, 97.3],
+                itemStyle: {
+                    color: '#faad14'
+                }
+            }
+        ]
+    });
+
+    // 厂商日报统计图表
+    const csStatInstance = echarts.init(csStatChart.value!);
+    csStatInstance.setOption({
+        animation: false,
+        tooltip: {
+            trigger: 'axis',
+            axisPointer: {
+                type: 'shadow'
+            }
+        },
+        legend: {
+            data: ['用水量', '在线率', '抄见率']
+        },
+        grid: {
+            left: '3%',
+            right: '4%',
+            bottom: '3%',
+            containLabel: true
+        },
+        xAxis: [
+            {
+                type: 'category',
+                data: ['深仪兆业', '三川智慧', '新天科技', '重庆智慧水务', '兆基仪表'],
+                axisLabel: {
+                    interval: 0,
+                    rotate: 30
+                }
+            }
+        ],
+        yAxis: [
+            {
+                type: 'value',
+                name: '用水量(m³)',
+                min: 0,
+                max: 200000,
+                position: 'left'
+            },
+            {
+                type: 'value',
+                name: '百分比',
+                min: 90,
+                max: 100,
+                position: 'right',
+                axisLabel: {
+                    formatter: '{value}%'
+                }
+            }
+        ],
+        series: [
+            {
+                name: '用水量',
+                type: 'bar',
+                data: [156420, 168540, 142360, 159840, 145680],
+                itemStyle: {
+                    color: '#1890ff'
+                }
+            },
+            {
+                name: '在线率',
+                type: 'line',
+                yAxisIndex: 1,
+                data: [98.3, 98.5, 98.4, 98.4, 98.2, 98.1],
+                itemStyle: {
+                    color: '#52c41a'
+                }
+            },
+            {
+                name: '抄见率',
+                type: 'line',
+                yAxisIndex: 1,
+                data: [97.6, 97.8, 97.5, 98.0, 97.4, 97.3],
+                itemStyle: {
+                    color: '#faad14'
+                }
+            }
+        ]
+    });
+    
+});
+
+</script>
+<style  scoped>
+</style>

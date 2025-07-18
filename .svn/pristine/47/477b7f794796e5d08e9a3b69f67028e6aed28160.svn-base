@@ -1,0 +1,163 @@
+<template>
+	<!-- 搜索和操作区域 -->
+	<div class="bg-white p-4 rounded-lg shadow-sm mb-6">
+	<div class="flex items-center justify-between mb-4">
+	<div class="flex items-center space-x-4">
+	<el-input
+	v-model="searchQuery"
+	placeholder="请输入用户名或操作内容"
+	class="w-64">
+	<template #prefix>
+	<el-icon><Search /></el-icon>
+	</template>
+	</el-input>
+	<el-select v-model="operationType" placeholder="操作类型" class="w-48">
+	<el-option label="全部类型" value="" />
+	<el-option label="登录" value="login" />
+	<el-option label="登出" value="logout" />
+	<el-option label="新增" value="add" />
+	<el-option label="修改" value="edit" />
+	<el-option label="删除" value="delete" />
+	<el-option label="导出" value="export" />
+	</el-select>
+	<el-date-picker
+	v-model="dateRange"
+	type="daterange"
+	range-separator="至"
+	start-placeholder="开始日期"
+	end-placeholder="结束日期"
+	class="w-80"
+	/>
+	</div>
+	<div class="flex items-center space-x-4">
+	<el-button type="primary" class="!rounded-button">
+	<el-icon class="mr-1"><Document /></el-icon>
+	导出日志
+	</el-button>
+	</div>
+	</div>
+	</div>
+	<!-- 访问日志列表 -->
+	<div class="bg-white rounded-lg shadow-sm">
+	<el-table :data="logList" style="width: 100%">
+	<el-table-column type="index" label="序号" width="80"/>
+	<el-table-column prop="username" label="用户名" min-width="120"/>
+	<el-table-column prop="operationType" label="操作类型" width="100">
+	<template #default="scope">
+	<el-tag :type="getTagType(scope.row.operationType)">
+	{{ scope.row.operationType }}
+	</el-tag>
+	</template>
+	</el-table-column>
+	<el-table-column prop="operationContent" label="操作内容" min-width="200"/>
+	<el-table-column prop="ipAddress" label="IP地址" width="140"/>
+	<el-table-column prop="location" label="登录地点" width="140"/>
+	<el-table-column prop="browser" label="浏览器" width="140"/>
+	<el-table-column prop="os" label="操作系统" width="140"/>
+	<el-table-column prop="operationTime" label="操作时间" width="180"/>
+	<el-table-column prop="status" label="状态" width="100">
+	<template #default="scope">
+	<el-tag :type="scope.row.status ? 'success' : 'danger'">
+	{{ scope.row.status ? '成功' : '失败' }}
+	</el-tag>
+	</template>
+	</el-table-column>
+	</el-table>
+	<div class="flex justify-end p-4">
+	<el-pagination
+	:total="100"
+	:page-size="10"
+	:current-page="currentPage"
+	background
+	layout="prev, pager, next" />
+	</div>
+	</div>
+</template>
+
+<script lang="ts" setup>
+import { ref } from 'vue';
+import { Bell, Monitor, DataLine, Operation, Connection, Lock, Setting, Search, Document } from '@element-plus/icons-vue';
+
+const searchQuery = ref('');
+const operationType = ref('');
+const dateRange = ref([]);
+const currentPage = ref(1);
+
+
+
+const getTagType = (type: string) => {
+  const typeMap: Record<string, string> = {
+    '登录': 'success',
+    '登出': 'info',
+    '新增': 'primary',
+    '修改': 'warning',
+    '删除': 'danger',
+    '导出': ''
+  };
+  return typeMap[type] || '';
+};
+
+const logList = ref([
+  {
+    username: '郑明远',
+    operationType: '登录',
+    operationContent: '用户登录系统',
+    ipAddress: '192.168.1.101',
+    location: '广东省广州市',
+    browser: 'Chrome 120.0',
+    os: 'Windows 11',
+    operationTime: '2024-01-15 14:30:22',
+    status: true
+  },
+  {
+    username: '林雪梅',
+    operationType: '修改',
+    operationContent: '修改用户信息：王建国',
+    ipAddress: '192.168.1.102',
+    location: '广东省深圳市',
+    browser: 'Firefox 121.0',
+    os: 'macOS 14.2',
+    operationTime: '2024-01-15 14:25:18',
+    status: true
+  },
+  {
+    username: '黄志强',
+    operationType: '导出',
+    operationContent: '导出设备运行数据报表',
+    ipAddress: '192.168.1.103',
+    location: '广东省佛山市',
+    browser: 'Edge 120.0',
+    os: 'Windows 10',
+    operationTime: '2024-01-15 14:20:45',
+    status: true
+  },
+  {
+    username: '陈思颖',
+    operationType: '新增',
+    operationContent: '新增设备：智能水表 WM-2024-001',
+    ipAddress: '192.168.1.104',
+    location: '广东省东莞市',
+    browser: 'Safari 17.0',
+    os: 'macOS 14.2',
+    operationTime: '2024-01-15 14:15:33',
+    status: true
+  },
+  {
+    username: '王建国',
+    operationType: '登出',
+    operationContent: '用户退出系统',
+    ipAddress: '192.168.1.105',
+    location: '广东省中山市',
+    browser: 'Chrome 120.0',
+    os: 'Windows 11',
+    operationTime: '2024-01-15 14:10:15',
+    status: true
+  }
+]);
+</script>
+
+<style scoped>
+.el-menu {
+border-right: none;
+}
+</style>

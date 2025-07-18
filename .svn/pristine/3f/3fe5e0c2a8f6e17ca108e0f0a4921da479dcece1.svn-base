@@ -1,0 +1,304 @@
+<template>
+    <!-- 筛选面板 -->
+    <div class="bg-white p-4 rounded-lg shadow-sm mb-4">
+                <div class="grid grid-cols-3 gap-4">
+                    <el-select v-model="areaStation" placeholder="按分区站点筛选" clearable class="w-full">
+                        <el-option label="东区" value="east" />
+                        <el-option label="西区" value="west" />
+                        <el-option label="九龙" value="jiulong" />
+                        <el-option label="九龙镇" value="jiulongtown" />
+                    </el-select>
+                    <el-select v-model="deviceTemplate" placeholder="按设备类型筛选" clearable class="w-full">
+                        <el-option label="水表" value="waterMeter" />
+                        <el-option label="消火栓" value="hydrant" />
+                        <el-option label="二供/加压" value="pressureBoost" />
+                        <el-option label="智能井盖" value="smartManhole" />
+                    </el-select>
+                    <el-select v-model="modelType" placeholder="按报警等级筛选" clearable class="w-full">
+                        <el-option label="一般" value="normal" />
+                        <el-option label="紧急" value="urgent" />
+                        <el-option label="重大" value="critical" />
+                    </el-select>
+                </div>
+            </div>
+            <!-- 报警记录表格 -->
+            <div class="bg-white rounded-lg shadow-sm">
+                <div class="p-4 border-b border-gray-100 flex justify-between items-center">
+                    <h2 class="text-lg font-medium">实时报警记录</h2>
+                    <div class="flex space-x-2">
+                        <el-select v-model="alarmType" placeholder="报警类型" clearable class="w-32">
+                            <el-option label="全部" value="" />
+                            <el-option label="通讯失败报警" value="communication" />
+                            <el-option label="传感器通讯失败报警" value="sensor" />
+                            <el-option label="电池欠压报警" value="battery" />
+                            <el-option label="离线报警" value="offline" />
+                        </el-select>
+                        <el-select v-model="processStatus" placeholder="处理状态" clearable class="w-32">
+                            <el-option label="全部" value="" />
+                            <el-option label="未处理" value="pending" />
+                            <el-option label="处理中" value="processing" />
+                            <el-option label="已处理" value="completed" />
+                        </el-select>
+                        <el-input v-model="searchQuery" placeholder="搜索设备名称/编号" clearable class="w-64">
+                            <template #prefix>
+                                <el-icon class="text-gray-400">
+                                    <Search />
+                                </el-icon>
+                            </template>
+                        </el-input>
+                    </div>
+                </div>
+                <el-table :data="deviceList" stripe border @row-dblclick="handleRowDblClick">
+                    <el-table-column type="index" label="序号" width="70" />
+                    <el-table-column prop="code" label="通讯编号" min-width="120" />
+                    <el-table-column prop="address" label="安装地址" min-width="180" />
+                    <el-table-column prop="deviceType" label="设备种类" width="100" />
+                    <el-table-column prop="manufacturer" label="厂家" width="120" />
+                    <el-table-column prop="model" label="型号" width="120" />
+                    <el-table-column prop="alarmContent" label="报警信息" min-width="200" />
+                    <el-table-column prop="alarmTime" label="报警时间" width="160" />
+                    <el-table-column prop="duration" label="持续时间" width="100" />
+                    <el-table-column label="操作" width="280" fixed="right">
+                        <template #default="{ row }">
+                            <div class="flex space-x-2">
+                                <el-button type="primary" size="small" plain class="!rounded-button whitespace-nowrap"
+                                    @click="viewDeviceAnalysis(row)">
+                                    <el-icon class="mr-1">
+                                        <TrendCharts />
+                                    </el-icon>
+                                    单点分析
+                                </el-button>
+                                <el-button type="success" size="small" plain class="!rounded-button whitespace-nowrap"
+                                    @click="handleConfirmAlarm(row)">
+                                    <el-icon class="mr-1">
+                                        <CircleCheck />
+                                    </el-icon>
+                                    确认报警
+                                </el-button>
+                                <el-button type="warning" size="small" plain class="!rounded-button whitespace-nowrap"
+                                    @click="createWorkOrder(row)">
+                                    <el-icon class="mr-1">
+                                        <Notebook />
+                                    </el-icon>
+                                    下发工单
+                                </el-button>
+                            </div>
+                        </template>
+                    </el-table-column>
+                </el-table>
+                <div class="flex justify-end p-4">
+                    <el-pagination v-model:current-page="currentPage" v-model:page-size="pageSize" :total="total"
+                        :page-sizes="[9, 20, 50, 100]" layout="total, sizes, prev, pager, next, jumper" />
+                </div>
+            </div>
+</template>
+<script lang="ts" setup>
+import { ref, onMounted, watch, nextTick, computed, h } from 'vue';
+import { Monitor, DataLine, Setting, Lock, Connection, Tools, Fold, Expand, HomeFilled, Timer, Warning, TrendCharts, Odometer, DocumentDelete, Download, Edit, Refresh, Delete, Position, Collection, Link, Goods, SetUp, FolderOpened, Share, Management, Key, User, UserFilled, CircleCheck, Notebook, Guide, Bell, Document, Service, Search, View, List, Grid } from '@element-plus/icons-vue';
+import { ElMessage, ElMessageBox } from 'element-plus';
+
+const searchQuery = ref('');
+const areaStation = ref('');
+const deviceTemplate = ref('');
+const modelType = ref('');
+const alarmType = ref('');
+const processStatus = ref('');
+// 双击行查看详情
+const handleRowDblClick = (row: any) => {
+    viewAlarmDetail(row);
+};
+// 查看报警详情
+const viewAlarmDetail = (row: any) => {
+    ElMessageBox.alert(`
+<div class="text-left">
+<h3 class="font-bold mb-4">报警详情</h3>
+<p class="mb-2"><span class="font-medium">设备名称：</span>${row.name}</p>
+<p class="mb-2"><span class="font-medium">设备编号：</span>${row.code}</p>
+<p class="mb-2"><span class="font-medium">报警类型：</span>${row.alarmType}</p>
+<p class="mb-2"><span class="font-medium">报警内容：</span>${row.alarmContent}</p>
+<p class="mb-2"><span class="font-medium">报警时间：</span>${row.alarmTime}</p>
+<p class="mb-2"><span class="font-medium">持续时间：</span>${row.duration}</p>
+<p class="mb-2"><span class="font-medium">处理状态：</span>${row.processStatus}</p>
+</div>
+`, '报警信息', {
+        dangerouslyUseHTMLString: true,
+        confirmButtonText: '关闭'
+    });
+};
+// 确认报警
+const handleConfirmAlarm = (row: any) => {
+    ElMessageBox.confirm('确认处理该报警吗？', '确认提示', {
+        confirmButtonText: '确认',
+        cancelButtonText: '取消',
+        type: 'warning'
+    }).then(() => {
+        ElMessage.success('报警已确认');
+    });
+};
+// 下发工单
+const createWorkOrder = (row: any) => {
+    const workOrderType = ref('urgent');
+    const responsiblePerson = ref('');
+    ElMessageBox({
+        title: '下发工单',
+        message: h('div', {}, [
+            h('el-select', {
+                modelValue: workOrderType.value,
+                'onUpdate:modelValue': (value: string) => workOrderType.value = value,
+                style: 'width: 100%; margin-bottom: 15px',
+                placeholder: '请选择工单类型'
+            }, [
+                h('el-option', { label: '紧急工单', value: 'urgent' }),
+                h('el-option', { label: '常规工单', value: 'normal' }),
+                h('el-option', { label: '计划工单', value: 'planned' })
+            ]),
+            h('el-select', {
+                modelValue: responsiblePerson.value,
+                'onUpdate:modelValue': (value: string) => responsiblePerson.value = value,
+                style: 'width: 100%; margin-bottom: 15px',
+                placeholder: '请选择负责人'
+            }, [
+                h('el-option', { label: '张工程师', value: 'zhang' }),
+                h('el-option', { label: '李工程师', value: 'li' }),
+                h('el-option', { label: '王工程师', value: 'wang' }),
+                h('el-option', { label: '赵工程师', value: 'zhao' })
+            ]),
+            h('el-input', {
+                modelValue: ref('').value,
+                type: 'textarea',
+                rows: 4,
+                placeholder: '请描述需要处理的具体内容'
+            })
+        ]),
+        showCancelButton: true,
+        confirmButtonText: '确认',
+        cancelButtonText: '取消',
+        beforeClose: (action, instance, done) => {
+            if (action === 'confirm') {
+                ElMessage.success('工单已下发');
+            }
+            done();
+        }
+    });
+};
+// 查看设备单点分析
+const viewDeviceAnalysis = (row: any) => {
+    ElMessage.info('正在跳转到单点分析页面...');
+};
+const viewMode = ref('card');
+const currentPage = ref(1);
+const pageSize = ref(9);
+const total = ref(100);
+const deviceList = ref([
+    {
+        id: 1,
+        code: 'C24010001',
+        address: '长安安置区九号楼706',
+        deviceType: '电磁水表',
+        manufacturer: '重启智慧水务',
+        model: 'PH-2000',
+        alarmContent: '机电分离',
+        alarmTime: '2025-01-20 15:30:22',
+        duration: '5分钟',
+        processStatus: '未处理'
+    },
+    {
+        id: 2,
+        code: 'C24010002',
+        address: '长安安置区二号楼306',
+        deviceType: '电磁水表',
+        manufacturer: '新天科技',
+        model: 'C-8500',
+        alarmContent: '机电分离',
+        alarmTime: '2025-02-27 15:28:18',
+        duration: '7分钟',
+        processStatus: '处理中'
+    },
+    {
+        id: 3,
+        code: 'C24010003',
+        address: '长安安置区三号楼201',
+        deviceType: '电磁水表',
+        manufacturer: '宁波水表',
+        model: 'MAG-5100',
+        alarmContent: '机电分离',
+        alarmTime: '2025-02-27 15:00:45',
+        duration: '35分钟',
+        processStatus: '未处理'
+    },
+    {
+        id: 4,
+        code: 'C24010004',
+        address: '九龙镇二供站',
+        deviceType: '电磁水表',
+        manufacturer: '广州恒运',
+        model: 'C-2000Pro',
+        alarmContent: '设备离线',
+        alarmTime: '2025-02-27 15:20:15',
+        duration: '15分钟',
+        processStatus: '已处理'
+    },
+    {
+        id: 5,
+        code: 'C24010005',
+        address: '东区清水池',
+        deviceType: '电磁水表',
+        manufacturer: '福州真兰',
+        model: 'C-3000',
+        alarmContent: '设备离线',
+        alarmTime: '2025-02-27 15:25:30',
+        duration: '10分钟',
+        processStatus: '处理中'
+    },
+    {
+        id: 6,
+        code: 'C24010006',
+        address: '西区管网监测点B',
+        deviceType: '电磁水表',
+        manufacturer: 'ABB',
+        model: 'C-2600',
+        alarmContent: '电池欠压',
+        alarmTime: '2025-02-27 15:10:20',
+        duration: '25分钟',
+        processStatus: '已处理'
+    },
+    {
+        id: 7,
+        code: 'C24010007',
+        address: '九龙消防站点',
+        deviceType: '消火栓',
+        manufacturer: '智创',
+        model: 'C-1000',
+        alarmContent: '检测到疑似漏水情况，需立即处理',
+        alarmTime: '2025-02-27 15:15:12',
+        duration: '20分钟',
+        processStatus: '处理中'
+    },
+    {
+        id: 8,
+        code: 'C24010008',
+        address: '东区加压泵站',
+        deviceType: '电磁水表',
+        manufacturer: '安德里茨',
+        model: 'C-3500D',
+        alarmContent: '机电分离',
+        alarmTime: '2025-02-27 15:18:08',
+        duration: '17分钟',
+        processStatus: '未处理'
+    },
+    {
+        id: 9,
+        code: 'C24010009',
+        address: '九龙镇水厂',
+        deviceType: '电磁水表',
+        manufacturer: '哈希',
+        model: 'C-8000',
+        alarmContent: '机电分离',
+        alarmTime: '2025-02-27 15:22:05',
+        duration: '13分钟',
+        processStatus: '未处理'
+    }
+]);
+</script>
+<style scoped>
+</style>

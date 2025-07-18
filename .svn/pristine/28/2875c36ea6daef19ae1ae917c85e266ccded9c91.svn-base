@@ -1,0 +1,328 @@
+<template>
+<!-- 搜索框 -->
+<div class="bg-white p-4 rounded-lg shadow-sm mb-4 flex items-center space-x-4">
+                <el-input v-model="searchDevice" placeholder="请输入设备ID、名称或安装位置搜索" class="flex-1 !rounded-button"
+                    size="large">
+                    <template #prefix>
+                        <el-icon class="ml-2">
+                            <Search />
+                        </el-icon>
+                    </template>
+                </el-input>
+                <el-button type="primary" class="!rounded-button whitespace-nowrap" size="large">
+                    <el-icon class="mr-1">
+                        <Search />
+                    </el-icon>
+                    搜索
+                </el-button>
+            </div>
+            <!-- 设备完好率概览 -->
+            <div class="bg-white p-6 rounded-lg shadow-sm mb-4">
+                <div class="flex items-center justify-between mb-6">
+                    <div class="flex items-center space-x-4">
+                        <el-icon class="text-2xl text-blue-500">
+                            <Odometer />
+                        </el-icon>
+                        <div>
+                            <h2 class="text-lg font-medium">设备完好率分析</h2>
+                            <p class="text-gray-500 text-sm mt-1">更新时间：2024-01-20 15:30:25</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <el-select v-model="selectedRegion" placeholder="选择区域" class="!rounded-button">
+                            <el-option label="全部区域" value="all" />
+                            <el-option label="东区" value="east" />
+                            <el-option label="西区" value="west" />
+                            <el-option label="科学城" value="south" />
+                            <el-option label="萝岗" value="north" />
+                        </el-select>
+                        <el-date-picker v-model="analysisDate" type="daterange" range-separator="至"
+                            start-placeholder="开始日期" end-placeholder="结束日期" class="!rounded-button" />
+                    </div>
+                </div>
+
+                <!-- 统计卡片 -->
+                <div class="grid grid-cols-4 gap-4 mb-6">
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <div class="text-gray-500 text-sm mb-2">总设备数量</div>
+                        <div class="text-2xl font-medium">240510</div>
+                        <div class="text-xs text-blue-500 mt-2">完好率目标 98%</div>
+                    </div>
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <div class="text-gray-500 text-sm mb-2">完好设备数</div>
+                        <div class="text-2xl font-medium">2,398</div>
+                        <div class="text-xs text-green-500 mt-2">完好率 97.6%</div>
+                    </div>
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <div class="text-gray-500 text-sm mb-2">故障设备数</div>
+                        <div class="text-2xl font-medium">58</div>
+                        <div class="text-xs text-orange-500 mt-2">同比下降 15%</div>
+                    </div>
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <div class="text-gray-500 text-sm mb-2">设备寿命预警</div>
+                        <div class="text-2xl font-medium">126</div>
+                        <div class="text-xs text-red-500 mt-2">需要更换 35 台</div>
+                    </div>
+                </div>
+
+                <!-- 分析图表 -->
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="bg-white p-4 rounded-lg border">
+                        <h3 class="text-base font-medium mb-4">完好率趋势分析</h3>
+                        <div class="h-80" ref="healthTrendChart"></div>
+                    </div>
+                    <div class="bg-white p-4 rounded-lg border">
+                        <h3 class="text-base font-medium mb-4">故障类型分布</h3>
+                        <div class="h-80" ref="faultTypeChart"></div>
+                    </div>
+                </div>
+
+                <!-- 详细数据表格 -->
+                <div class="mt-4">
+                    <el-table :data="deviceHealthData" border stripe class="w-full">
+                        <el-table-column prop="region" label="区域" width="120" />
+                        <el-table-column prop="deviceType" label="设备类型" width="150" />
+                        <el-table-column prop="totalCount" label="设备总数" width="120" />
+                        <el-table-column prop="healthyCount" label="完好数量" width="120" />
+                        <el-table-column prop="healthRate" label="完好率">
+                            <template #default="scope">
+                                <div class="flex items-center">
+                                    <span class="mr-2">{{ scope.row.healthRate }}%</span>
+                                    <div class="flex-1 h-2 bg-gray-200 rounded-full">
+                                        <div class="h-full rounded-full bg-blue-500"
+                                            :style="{ width: scope.row.healthRate + '%' }"></div>
+                                    </div>
+                                </div>
+                            </template>
+                        </el-table-column>
+                        <el-table-column prop="mtbf" label="MTBF(h)" width="120" />
+                        <el-table-column prop="mttr" label="MTTR(h)" width="120" />
+                        <el-table-column label="状态" width="120">
+                            <template #default="scope">
+                                <el-tag
+                                    :type="scope.row.healthRate >= 98 ? 'success' : scope.row.healthRate >= 95 ? 'warning' : 'danger'"
+                                    class="!rounded-button">
+                                    {{ scope.row.healthRate >= 98 ? '优秀' : scope.row.healthRate >= 95 ? '一般' : '待改进' }}
+                                </el-tag>
+                            </template>
+                        </el-table-column>
+                    </el-table>
+                </div>
+            </div>
+</template>
+<script lang="ts" setup>
+import { ref, onMounted, watch, nextTick, computed } from 'vue';
+import { Monitor, DataLine, Setting, Lock, Connection, Tools, Fold, Expand, HomeFilled, Timer, Warning, TrendCharts, Odometer, DocumentDelete, Download, Edit, Refresh, Delete, Position, Collection, Link, Goods, SetUp, FolderOpened, Share, Management, Key, User, UserFilled, CircleCheck, Notebook, Guide, Bell, Document, Service, Search, View, List, Grid, Close, ArrowUp, ArrowDown } from '@element-plus/icons-vue';
+import type { EChartsOption } from 'echarts';
+import * as echarts from 'echarts';
+import { ElMessage, ElMessageBox } from 'element-plus';
+const isCollapse = ref(false);
+const selectedRegion = ref('all');
+const analysisDate = ref([new Date(2024, 0, 1), new Date()]);
+const searchDevice = ref('');
+
+// 设备健康数据
+const deviceHealthData = ref([
+    {
+        region: '东区',
+        deviceType: '居民水表',
+        totalCount: 856,
+        healthyCount: 835,
+        healthRate: 97.5,
+        mtbf: 720,
+        mttr: 4.5
+    },
+    {
+        region: '东区',
+        deviceType: '非居民水表',
+        totalCount: 654,
+        healthyCount: 642,
+        healthRate: 98.2,
+        mtbf: 840,
+        mttr: 3.8
+    },
+    {
+        region: '东区',
+        deviceType: '消火栓',
+        totalCount: 523,
+        healthyCount: 508,
+        healthRate: 97.1,
+        mtbf: 680,
+        mttr: 5.2
+    },
+    {
+        region: '西区',
+        deviceType: '居民水表',
+        totalCount: 423,
+        healthyCount: 413,
+        healthRate: 97.6,
+        mtbf: 750,
+        mttr: 4.2
+    }
+]);
+// 图表实例
+const healthTrendChart = ref<HTMLElement | null>(null);
+const faultTypeChart = ref<HTMLElement | null>(null);
+let healthTrendInstance: echarts.ECharts | null = null;
+let faultTypeInstance: echarts.ECharts | null = null;
+// 模拟数据
+const reportData = ref([
+    {
+        time: '2024-01-20 00:00',
+        ph: '7.2',
+        turbidity: '0.35',
+        chlorine: '0.42',
+        temperature: '25.6'
+    },
+    {
+        time: '2024-01-20 01:00',
+        ph: '7.1',
+        turbidity: '0.38',
+        chlorine: '0.45',
+        temperature: '25.4'
+    },
+    // 更多数据...
+]);
+
+// 初始化图表
+onMounted(() => {
+    nextTick(() => {
+        if (healthTrendChart.value) {
+            healthTrendInstance = echarts.init(healthTrendChart.value);
+            const healthTrendOption: EChartsOption = {
+                animation: false,
+                tooltip: {
+                    trigger: 'axis'
+                },
+                legend: {
+                    data: ['完好率', '目标值']
+                },
+                grid: {
+                    left: '3%',
+                    right: '4%',
+                    bottom: '3%',
+                    containLabel: true
+                },
+                xAxis: {
+                    type: 'category',
+                    boundaryGap: false,
+                    data: ['1月', '2月', '3月', '4月', '5月', '6月']
+                },
+                yAxis: {
+                    type: 'value',
+                    min: 90,
+                    max: 100,
+                    axisLabel: {
+                        formatter: '{value}%'
+                    }
+                },
+                series: [
+                    {
+                        name: '完好率',
+                        type: 'line',
+                        data: [97.2, 97.5, 96.8, 97.8, 97.6, 97.6],
+                        smooth: true,
+                        lineStyle: {
+                            width: 3
+                        },
+                        itemStyle: {
+                            color: '#1890ff'
+                        }
+                    },
+                    {
+                        name: '目标值',
+                        type: 'line',
+                        data: [98, 98, 98, 98, 98, 98],
+                        lineStyle: {
+                            type: 'dashed',
+                            width: 2
+                        },
+                        itemStyle: {
+                            color: '#52c41a'
+                        }
+                    }
+                ]
+            };
+            healthTrendInstance.setOption(healthTrendOption);
+        }
+
+        if (faultTypeChart.value) {
+            faultTypeInstance = echarts.init(faultTypeChart.value);
+            const faultTypeOption: EChartsOption = {
+                animation: false,
+                tooltip: {
+                    trigger: 'item'
+                },
+                legend: {
+                    orient: 'vertical',
+                    right: 10,
+                    top: 'center'
+                },
+                series: [
+                    {
+                        name: '故障类型分布',
+                        type: 'pie',
+                        radius: ['40%', '70%'],
+                        avoidLabelOverlap: false,
+                        itemStyle: {
+                            borderRadius: 10,
+                            borderColor: '#fff',
+                            borderWidth: 2
+                        },
+                        label: {
+                            show: false,
+                            position: 'center'
+                        },
+                        emphasis: {
+                            label: {
+                                show: true,
+                                fontSize: 20,
+                                fontWeight: 'bold'
+                            }
+                        },
+                        labelLine: {
+                            show: false
+                        },
+                        data: [
+                            { value: 20, name: '通信故障' },
+                            { value: 15, name: '传感器故障' },
+                            { value: 12, name: '供电故障' },
+                            { value: 8, name: '数据异常' },
+                            { value: 3, name: '其他故障' }
+                        ]
+                    }
+                ]
+            };
+            faultTypeInstance.setOption(faultTypeOption);
+        }
+    });
+});
+// 处理预警
+const handleWarning = (row: any) => {
+    ElMessageBox.confirm('确认处理该预警吗？', '提示', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+    }).then(() => {
+        ElMessage({
+            type: 'success',
+            message: '预警处理成功'
+        });
+    }).catch(() => { });
+};
+// 查看详情
+const viewDetail = (row: any) => {
+    ElMessageBox.alert(`预警详情：${row.type} - ${row.value}`, '预警详情', {
+        confirmButtonText: '确定'
+    });
+};
+// 监听窗口大小变化
+watch(() => isCollapse.value, () => {
+    nextTick(() => {
+        healthTrendInstance?.resize();
+        faultTypeInstance?.resize();
+    });
+});
+</script>
+<style scoped>
+</style>

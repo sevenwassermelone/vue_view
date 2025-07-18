@@ -1,0 +1,292 @@
+<template>
+     <div class="flex flex-col gap-6 h-[calc(100vh-8rem)]">
+        <!-- 搜索区域 -->
+        <div class="bg-white p-4 rounded-lg shadow-sm">
+            <div class="flex gap-4 items-center">
+                <el-input v-model="searchKeyword" placeholder="请输入用户名/IP/操作内容" class="w-64" clearable>
+                    <template #prefix>
+                        <el-icon>
+                            <Search />
+                        </el-icon>
+                    </template>
+                </el-input>
+                <el-select v-model="accessType" placeholder="访问类型" class="w-32">
+                    <el-option label="全部" value="" />
+                    <el-option label="登录" value="login" />
+                    <el-option label="操作" value="operation" />
+                    <el-option label="查询" value="query" />
+                </el-select>
+                <el-select v-model="accessStatus" placeholder="访问状态" class="w-32">
+                    <el-option label="全部" value="" />
+                    <el-option label="成功" value="success" />
+                    <el-option label="失败" value="fail" />
+                </el-select>
+                <el-date-picker v-model="dateRange" type="daterange" range-separator="至"
+                    start-placeholder="开始日期" end-placeholder="结束日期" class="w-72" />
+                <el-button type="primary" class="!rounded-button">
+                    <el-icon class="mr-1">
+                        <Search />
+                    </el-icon>
+                    查询
+                </el-button>
+                <el-button class="!rounded-button">
+                    <el-icon class="mr-1">
+                        <Tools />
+                    </el-icon>
+                    导出日志
+                </el-button>
+            </div>
+        </div>
+        <!-- 日志列表 -->
+        <div class="bg-white rounded-lg shadow-sm flex-1 overflow-hidden flex flex-col">
+            <el-table :data="accessLogs" class="flex-1" border style="width: 100%">
+                <el-table-column prop="username" label="用户名" width="120" />
+                <el-table-column prop="platform" label="访问平台" width="100">
+                    <template #default="{ row }">
+                        <el-tag :type="row.platform === 'web' ? 'primary' : 'success'"
+                            class="whitespace-nowrap">
+                            {{ row.platform === 'web' ? 'Web端' : 'APP端' }}
+                        </el-tag>
+                    </template>
+                </el-table-column>
+                <el-table-column prop="type" label="访问类型" width="100">
+                    <template #default="{ row }">
+                        <el-tag
+                            :type="row.type === 'login' ? 'success' : row.type === 'operation' ? 'warning' : 'info'"
+                            class="whitespace-nowrap">
+                            {{ row.type === 'login' ? '登录' : row.type === 'operation' ? '操作' : '查询' }}
+                        </el-tag>
+                    </template>
+                </el-table-column>
+                <el-table-column prop="path" label="访问路径" min-width="180" show-overflow-tooltip />
+                <el-table-column prop="accessTime" label="访问时间" width="160" />
+                <el-table-column prop="ip" label="IP地址" width="140" />
+                <el-table-column prop="location" label="地理位置" width="160" />
+                <el-table-column prop="module" label="功能名称" width="140" />
+                <el-table-column prop="status" label="状态" width="100">
+                    <template #default="{ row }">
+                        <el-tag :type="row.status === 'success' ? 'success' : 'danger'"
+                            class="whitespace-nowrap">
+                            {{ row.status === 'success' ? '成功' : '失败' }}
+                        </el-tag>
+                    </template>
+                </el-table-column>
+                <el-table-column prop="browser" label="浏览器" width="120" />
+                <el-table-column prop="os" label="操作系统" width="120" />
+                <el-table-column prop="content" label="操作内容" min-width="200" show-overflow-tooltip />
+                <el-table-column prop="duration" label="耗时(ms)" width="100" align="right" />
+            </el-table>
+            <!-- 分页 -->
+            <div class="p-4 border-t">
+                <el-pagination v-model:current-page="currentPage" v-model:page-size="pageSize"
+                    :page-sizes="[10, 20, 50, 100]" :total="total"
+                    layout="total, sizes, prev, pager, next, jumper" />
+            </div>
+        </div>
+    </div>
+
+
+    <!-- AI助手悬浮按钮 -->
+    <div class="fixed right-8 bottom-8 z-50">
+        <el-button type="primary"
+            class="!rounded-button h-16 w-16 flex items-center justify-center shadow-2xl hover:shadow-2xl hover:scale-110 transition-all animate-pulse"
+            @click="showAI"
+            style="background: linear-gradient(45deg, #00A3FF, #0038FF); box-shadow: 0 0 20px rgba(0, 163, 255, 0.5);">
+            <el-icon class="text-5xl">
+                <Cpu />
+            </el-icon>
+        </el-button>
+    </div>
+</template>
+<script lang="ts" setup>
+//访问日志
+import { ref, onMounted } from 'vue';
+import * as echarts from 'echarts';
+import { User, Message, Service, Fold, Expand, Monitor, HomeFilled, Connection, Star, Platform, Setting, Cpu, DataAnalysis, Tools, Document, Operation, VideoCamera, DataLine, Warning, Plus, Search, ChatDotRound, ChatLineSquare, Unlock } from '@element-plus/icons-vue';
+
+const searchKeyword = ref('');
+const accessType = ref('');
+const accessStatus = ref('');
+const dateRange = ref([]);
+const currentPage = ref(1);
+const pageSize = ref(10);
+const total = ref(100);
+const userGrowthChart = ref<HTMLElement | null>(null);
+const userDistributionChart = ref<HTMLElement | null>(null);
+const accessLogs = ref([
+    {
+        username: '张晓华',
+        platform: 'web',
+        type: 'login',
+        path: '/api/v1/auth/login',
+        module: '用户认证',
+        accessTime: '2025-02-15 15:30:22',
+        ip: '192.168.1.100',
+        location: '浙江省杭州市',
+        status: 'success',
+        browser: 'Chrome 120.0',
+        os: 'Windows 11',
+        content: '用户登录系统',
+        duration: 125
+    },
+    {
+        username: '李志明',
+        platform: 'app',
+        type: 'operation',
+        path: '/api/v1/user/role/update',
+        module: '用户管理',
+        accessTime: '2025-02-15 15:28:15',
+        ip: '210.45.78.90',
+        location: '江苏省南京市',
+        status: 'success',
+        browser: 'Safari Mobile',
+        os: 'iOS 17.2',
+        content: '修改用户角色权限[管理员]',
+        duration: 350
+    },
+    {
+        username: '王建国',
+        platform: 'web',
+        type: 'query',
+        path: '/api/v1/system/status',
+        module: '系统监控',
+        accessTime: '2025-02-15 15:25:48',
+        ip: '172.16.0.100',
+        location: '北京市朝阳区',
+        status: 'success',
+        browser: 'Firefox 121.0',
+        os: 'macOS 14.2',
+        content: '查询系统运行状态报表',
+        duration: 280
+    },
+    {
+        username: '刘春霞',
+        platform: 'web',
+        type: 'operation',
+        path: '/api/v1/alarm/history/delete',
+        module: '告警管理',
+        accessTime: '2025-02-15 15:20:33',
+        ip: '10.0.0.50',
+        location: '广东省深圳市',
+        status: 'fail',
+        browser: 'Edge 120.0',
+        os: 'Windows 10',
+        content: '删除历史告警记录[权限不足]',
+        duration: 89
+    },
+    {
+        username: '赵鑫',
+        platform: 'app',
+        type: 'login',
+        path: '/api/v1/auth/login',
+        module: '用户认证',
+        accessTime: '2025-02-15 15:15:12',
+        ip: '192.168.0.75',
+        location: '上海市浦东新区',
+        status: 'fail',
+        browser: 'Chrome Mobile',
+        os: 'Android 14',
+        content: '密码错误，登录失败',
+        duration: 95
+    }
+]);
+const appDialogVisible = ref(false);
+const menuDialogVisible = ref(false);
+const currentApp = ref<any>(null);
+// 应用表单数据
+const appForm = ref({
+    id: '',
+    name: '',
+    category: '',
+    internalIp: '',
+    externalIp: '',
+    icon: 'https://mastergo.com/ai/api/search-image?query=modern minimalist app icon design with abstract geometric shapes in blue and white, professional business application icon style against clean background, high quality render&width=80&height=80&orientation=squarish',
+    status: 1
+});
+// 菜单表单数据
+const menuForm = ref({
+    id: '',
+    name: '',
+    path: '',
+    icon: '',
+    sort: 0,
+    parentId: null
+});
+onMounted(() => {
+    // 初始化用户增长趋势图表
+    if (userGrowthChart.value) {
+        const chart = echarts.init(userGrowthChart.value);
+        chart.setOption({
+            animation: false,
+            tooltip: {
+                trigger: 'axis'
+            },
+            grid: {
+                left: '3%',
+                right: '4%',
+                bottom: '3%',
+                containLabel: true
+            },
+            xAxis: {
+                type: 'category',
+                boundaryGap: false,
+                data: ['1月', '2月', '3月', '4月', '5月', '6月', '7月']
+            },
+            yAxis: {
+                type: 'value'
+            },
+            series: [{
+                name: '用户数量',
+                type: 'line',
+                smooth: true,
+                data: [12000, 13200, 14500, 15800, 16900, 18200, 19500],
+                areaStyle: {
+                    opacity: 0.1
+                },
+                lineStyle: {
+                    width: 3
+                },
+                itemStyle: {
+                    color: '#409EFF'
+                }
+            }]
+        });
+    }
+    // 初始化用户分布图表
+    if (userDistributionChart.value) {
+        const chart = echarts.init(userDistributionChart.value);
+        chart.setOption({
+            animation: false,
+            tooltip: {
+                trigger: 'item'
+            },
+            legend: {
+                orient: 'vertical',
+                left: 'left'
+            },
+            series: [{
+                name: '用户分布',
+                type: 'pie',
+                radius: '60%',
+                center: ['60%', '50%'],
+                data: [
+                    { value: 35, name: '信息技术部' },
+                    { value: 25, name: '运维部门' },
+                    { value: 20, name: '研发中心' },
+                    { value: 15, name: '产品部门' },
+                    { value: 5, name: '质量保障部' }
+                ],
+                emphasis: {
+                    itemStyle: {
+                        shadowBlur: 10,
+                        shadowOffsetX: 0,
+                        shadowColor: 'rgba(0, 0, 0, 0.5)'
+                    }
+                }
+            }]
+        });
+    }
+});
+</script>
+<style scoped>
+</style>

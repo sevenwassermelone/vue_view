@@ -1,0 +1,311 @@
+<template>
+	<!-- 搜索和操作区域 -->
+	<div class="bg-white p-4 rounded-lg shadow-sm mb-6">
+	<div class="flex items-center justify-between mb-4">
+	<div class="flex items-center space-x-4">
+	<el-input
+	placeholder="请输入接入名称"
+	class="w-64">
+	<template #prefix>
+	<el-icon><Search /></el-icon>
+	</template>
+	</el-input>
+	<el-select placeholder="接入类型" class="w-32">
+	<el-option label="HTTP" value="HTTP" />
+	<el-option label="MQTT" value="MQTT" />
+	<el-option label="TCP" value="TCP" />
+	</el-select>
+	</div>
+	<el-button type="primary" class="!rounded-button" @click="dialogVisible = true">
+	<el-icon class="mr-1"><Plus /></el-icon>
+	新建接入
+	</el-button>
+	<!-- 新建接入对话框 -->
+	<el-dialog
+	v-model="dialogVisible"
+	title="新建接入"
+	width="500px">
+	<el-form :model="form" label-width="100px">
+	<el-form-item label="驱动名称">
+	<el-input v-model="form.name" placeholder="请输入驱动名称" />
+	</el-form-item>
+	<el-form-item label="驱动类型">
+	<el-select v-model="form.type" placeholder="请选择驱动类型" class="w-full">
+	<el-option label="DLT645" value="DLT645" />
+	<el-option label="Modbus" value="Modbus" />
+	<el-option label="BACnet" value="BACnet" />
+	<el-option label="OPC" value="OPC" />
+	<el-option label="IEC104" value="IEC104" />
+	</el-select>
+	</el-form-item>
+	<el-form-item label="IP地址">
+	<el-input v-model="form.ip" placeholder="请输入IP地址" />
+	</el-form-item>
+	<el-form-item label="端口">
+	<el-input v-model="form.port" placeholder="请输入端口号" />
+	</el-form-item>
+	<el-form-item label="查询">
+	<el-switch v-model="form.query" />
+	</el-form-item>
+	<el-form-item label="校时">
+	<el-switch v-model="form.timeSync" />
+	</el-form-item>
+	<el-form-item label="是否启用">
+	<el-switch v-model="form.enabled" />
+	</el-form-item>
+	</el-form>
+	<template #footer>
+	<span class="dialog-footer">
+	<el-button @click="dialogVisible = false" class="!rounded-button">取消</el-button>
+	<el-button type="primary" @click="handleSubmit" class="!rounded-button">确定</el-button>
+	</span>
+	</template>
+	</el-dialog>
+	</div>
+	</div>
+	<!-- 接入列表 -->
+	<div class="bg-white rounded-lg shadow-sm">
+	<el-table :data="accessList" style="width: 100%">
+	<el-table-column prop="name" label="驱动名称" />
+	<el-table-column prop="type" label="驱动类型">
+	<template #default="scope">
+	<el-tag :type="scope.row.type === 'HTTP' ? 'success' : 'primary'">{{ scope.row.type }}</el-tag>
+	</template>
+	</el-table-column>
+	<el-table-column prop="ip" label="IP地址" />
+	<el-table-column prop="port" label="端口" />
+	<el-table-column prop="query" label="查询">
+	<template #default="scope">
+	<el-tag :type="scope.row.query ? 'success' : 'danger'">
+	{{ scope.row.query ? '已开启' : '已关闭' }}
+	</el-tag>
+	</template>
+	</el-table-column>
+	<el-table-column prop="timeSync" label="校时" width="80">
+	<template #default="scope">
+	<el-tag :type="scope.row.timeSync ? 'success' : 'danger'">
+	{{ scope.row.timeSync ? '已开启' : '已关闭' }}
+	</el-tag>
+	</template>
+	</el-table-column>
+	<el-table-column prop="enabled" label="是否启用" width="80">
+	<template #default="scope">
+	<el-tag :type="scope.row.enabled ? 'success' : 'info'">
+	{{ scope.row.enabled ? '启用' : '禁用' }}
+	</el-tag>
+	</template>
+	</el-table-column>
+	<el-table-column prop="createTime" label="创建时间" width="160" />
+	<el-table-column prop="creator" label="创建人" width="100" />
+	<el-table-column label="操作" width="120">
+	<template #default="scope">
+	<el-button text type="primary" size="small" class="!rounded-button">
+	<el-icon class="mr-1"><Edit /></el-icon>编辑
+	</el-button>
+	<el-button text type="danger" size="small" class="!rounded-button">
+	<el-icon class="mr-1"><Delete /></el-icon>删除
+	</el-button>
+	</template>
+	</el-table-column>
+	</el-table>
+	<!-- 设备绑定对话框 -->
+	<el-dialog
+	v-model="deviceDialogVisible"
+	title="绑定设备"
+	width="800px">
+	<div class="mb-4">
+	<el-input
+	placeholder="搜索设备名称"
+	class="w-64">
+	<template #prefix>
+	<el-icon><Search /></el-icon>
+	</template>
+	</el-input>
+	</div>
+	<el-table
+	:data="deviceList"
+	@selection-change="handleDeviceSelect"
+	style="width: 100%">
+	<el-table-column
+	type="selection"
+	width="55" />
+	<el-table-column
+	prop="name"
+	label="设备名称"
+	width="200" />
+	<el-table-column
+	prop="type"
+	label="设备类型"
+	width="120" />
+	<el-table-column
+	prop="location"
+	label="安装位置" />
+	<el-table-column
+	prop="status"
+	label="状态"
+	width="100">
+	<template #default="scope">
+	<el-tag :type="scope.row.status === '在线' ? 'success' : 'danger'">
+	{{ scope.row.status }}
+	</el-tag>
+	</template>
+	</el-table-column>
+	</el-table>
+	<template #footer>
+	<span class="dialog-footer">
+	<el-button @click="deviceDialogVisible = false" class="!rounded-button">取消</el-button>
+	<el-button type="primary" @click="handleDeviceBind" class="!rounded-button">确定</el-button>
+	</span>
+	</template>
+	</el-dialog>
+	<div class="flex justify-end p-4">
+	<el-pagination
+	:total="100"
+	:page-size="10"
+	:current-page="1"
+	background
+	layout="prev, pager, next" />
+	</div>
+	</div>
+</template>
+
+<script lang="ts" setup>
+	import { ref } from 'vue';
+	import { Bell, Monitor, DataLine, Operation, Connection, Lock, Setting, Search, Plus, Edit, Link, Delete } from '@element-plus/icons-vue';
+
+	const dialogVisible = ref(false);
+	const form = ref({
+	name: '',
+	type: '',
+	ip: '',
+	port: '',
+	query: false,
+	timeSync: false,
+	enabled: true
+	});
+	const deviceDialogVisible = ref(false);
+	const selectedDevices = ref<string[]>([]);
+	const deviceList = ref([
+	{
+	id: '1',
+	name: 'PM2020型压力传感器',
+	type: '压力监测',
+	location: '西区管网节点A',
+	status: '在线'
+	},
+	{
+	id: '2',
+	name: 'TDS1080水质分析仪',
+	type: '水质监测',
+	location: '东区水厂出水口',
+	status: '在线'
+	},
+	{
+	id: '3',
+	name: 'FL5090流量计',
+	type: '流量监测',
+	location: '南区供水干管',
+	status: '离线'
+	},
+	{
+	id: '4',
+	name: 'WQ3030余氯分析仪',
+	type: '水质监测',
+	location: '北区加压站',
+	status: '在线'
+	},
+	{
+	id: '5',
+	name: 'PH2088酸碱度检测仪',
+	type: '水质监测',
+	location: '中心水厂',
+	status: '在线'
+	}
+	]);
+	const handleDeviceSelect = (selection: any[]) => {
+	selectedDevices.value = selection.map(item => item.id);
+	};
+	const handleDeviceBind = () => {
+	// 这里添加设备绑定逻辑
+	deviceDialogVisible.value = false;
+	selectedDevices.value = [];
+	};
+	const handleSubmit = () => {
+	// 这里添加表单提交逻辑
+	dialogVisible.value = false;
+	// 重置表单
+	form.value = {
+	name: '',
+	type: '',
+	ip: '',
+	port: '',
+	query: false,
+	timeSync: false,
+	enabled: true
+	};
+	};
+	const accessList = ref([
+	{
+	name: 'DLT645-2007驱动',
+	type: 'DLT645',
+	ip: '192.168.1.100',
+	port: '502',
+	query: true,
+	timeSync: true,
+	enabled: true,
+	createTime: '2024-01-15 14:30:22',
+	creator: '张明辉'
+	},
+	{
+	name: 'Modbus-TCP驱动',
+	type: 'Modbus',
+	ip: '192.168.1.101',
+	port: '503',
+	query: true,
+	timeSync: false,
+	enabled: true,
+	createTime: '2024-01-14 09:15:33',
+	creator: '李志强'
+	},
+	{
+	name: 'BACnet驱动',
+	type: 'BACnet',
+	ip: '192.168.1.102',
+	port: '47808',
+	query: false,
+	timeSync: true,
+	enabled: false,
+	createTime: '2024-01-13 16:45:12',
+	creator: '王建国'
+	},
+	{
+	name: 'OPC-UA驱动',
+	type: 'OPC',
+	ip: '192.168.1.103',
+	port: '4840',
+	query: true,
+	timeSync: true,
+	enabled: true,
+	createTime: '2024-01-12 11:20:45',
+	creator: '刘艳霞'
+	},
+	{
+	name: 'IEC104驱动',
+	type: 'IEC104',
+	ip: '192.168.1.104',
+	port: '2404',
+	query: false,
+	timeSync: false,
+	enabled: false,
+	createTime: '2024-01-11 15:55:18',
+	creator: '郑伟东'
+	}
+	]);
+	// 删除未使用的函数
+</script>
+
+<style scoped>
+.el-menu {
+border-right: none;
+}
+</style>

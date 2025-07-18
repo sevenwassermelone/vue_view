@@ -1,0 +1,445 @@
+<template>
+    <!-- 历史填报数据列表 -->
+    <div class="bg-white p-6 rounded-lg shadow-sm mb-6">
+                <div class="flex justify-between items-center mb-6">
+                    <div class="text-lg font-medium">历史填报记录</div>
+                    <el-button type="primary" class="!rounded-button" @click="showReportForm = true">
+                        <el-icon class="mr-2">
+                            <Edit />
+                        </el-icon>人工填报
+                    </el-button>
+                </div>
+                <el-tabs v-model="activeTab" class="border-b border-gray-200">
+                    <el-tab-pane label="居民水表" name="residential">
+                        <el-table :data="residentialData" stripe>
+                            <el-table-column prop="time" label="填报时间" width="180" />
+                            <el-table-column prop="address" label="用户地址" width="200" />
+                            <el-table-column prop="meterNo" label="水表编号" width="120" />
+                            <el-table-column label="用水数据">
+                                <template #default="{ row }">
+                                    <div class="flex items-center space-x-4">
+                                        <span>本月用水量: {{ row.usage }}m³</span>
+                                        <span>累计用水量: {{ row.total }}m³</span>
+                                    </div>
+                                </template>
+                            </el-table-column>
+                            <el-table-column prop="reporter" label="填报人" width="120" />
+                            <el-table-column label="操作" width="120">
+                                <template #default="{ row }">
+                                    <el-button type="primary" link @click="viewReportDetail(row)">
+                                        <el-icon>
+                                            <View />
+                                        </el-icon>查看
+                                    </el-button>
+                                </template>
+                            </el-table-column>
+                        </el-table>
+                    </el-tab-pane>
+                    <el-tab-pane label="非居民水表" name="commercial">
+                        <el-table :data="commercialData" stripe>
+                            <el-table-column prop="time" label="填报时间" width="180" />
+                            <el-table-column prop="company" label="单位名称" width="200" />
+                            <el-table-column prop="meterNo" label="水表编号" width="120" />
+                            <el-table-column label="用水数据">
+                                <template #default="{ row }">
+                                    <div class="flex items-center space-x-4">
+                                        <span>本月用水量: {{ row.usage }}m³</span>
+                                        <span>累计用水量: {{ row.total }}m³</span>
+                                    </div>
+                                </template>
+                            </el-table-column>
+                            <el-table-column prop="reporter" label="填报人" width="120" />
+                            <el-table-column label="操作" width="120">
+                                <template #default="{ row }">
+                                    <el-button type="primary" link @click="viewReportDetail(row)">
+                                        <el-icon>
+                                            <View />
+                                        </el-icon>查看
+                                    </el-button>
+                                </template>
+                            </el-table-column>
+                        </el-table>
+                    </el-tab-pane>
+                    <el-tab-pane label="消火栓" name="hydrant">
+                        <el-table :data="hydrantData" stripe>
+                            <el-table-column prop="time" label="填报时间" width="180" />
+                            <el-table-column prop="location" label="安装位置" width="200" />
+                            <el-table-column prop="code" label="设备编号" width="120" />
+                            <el-table-column label="监测数据">
+                                <template #default="{ row }">
+                                    <div class="flex items-center space-x-4">
+                                        <span>水压: {{ row.pressure }}MPa</span>
+                                        <span>流量: {{ row.flow }}L/s</span>
+                                    </div>
+                                </template>
+                            </el-table-column>
+                            <el-table-column prop="reporter" label="填报人" width="120" />
+                            <el-table-column label="操作" width="120">
+                                <template #default="{ row }">
+                                    <el-button type="primary" link @click="viewReportDetail(row)">
+                                        <el-icon>
+                                            <View />
+                                        </el-icon>查看
+                                    </el-button>
+                                </template>
+                            </el-table-column>
+                        </el-table>
+                    </el-tab-pane>
+                    <el-tab-pane label="智能井盖" name="manhole">
+                        <el-table :data="manholeData" stripe>
+                            <el-table-column prop="time" label="填报时间" width="180" />
+                            <el-table-column prop="location" label="安装位置" width="200" />
+                            <el-table-column prop="code" label="设备编号" width="120" />
+                            <el-table-column label="监测数据">
+                                <template #default="{ row }">
+                                    <div class="flex items-center space-x-4">
+                                        <span>开合状态: {{ row.status }}</span>
+                                        <span>倾斜角度: {{ row.angle }}°</span>
+                                        <span>电池电量: {{ row.battery }}%</span>
+                                    </div>
+                                </template>
+                            </el-table-column>
+                            <el-table-column prop="reporter" label="填报人" width="120" />
+                            <el-table-column label="操作" width="120">
+                                <template #default="{ row }">
+                                    <el-button type="primary" link @click="viewReportDetail(row)">
+                                        <el-icon>
+                                            <View />
+                                        </el-icon>查看
+                                    </el-button>
+                                </template>
+                            </el-table-column>
+                        </el-table>
+                    </el-tab-pane>
+                </el-tabs>
+                <div class="mt-4 flex justify-end">
+                    <el-pagination background layout="total, prev, pager, next" :total="total"
+                        :current-page="currentPage" :page-size="pageSize" @current-change="currentChange" />
+                </div>
+            </div>
+            <!-- 数据填报表单弹窗 -->
+            <el-dialog v-model="showReportForm" title="数据填报" width="80%" destroy-on-close>
+                <div class="bg-white">
+                    <div class="text-lg font-medium mb-6">数据填报</div>
+                    <el-form label-width="120px" class="w-full">
+                        <div class="grid grid-cols-2 gap-6">
+                            <el-form-item label="档案号" required>
+                                <el-input v-model="formData.archiveNo" placeholder="请输入档案号" class="!rounded-button" />
+                            </el-form-item>
+                            <el-form-item label="所属区域">
+                                <el-select v-model="selectedRegion" placeholder="请选择所属区域"
+                                    class="w-full !rounded-button">
+                                    <el-option label="东区" value="east" />
+                                    <el-option label="西区" value="west" />
+                                    <el-option label="萝岗" value="luogang" />
+                                    <el-option label="科学城" value="science" />
+                                </el-select>
+                            </el-form-item>
+                            <el-form-item label="设备类型">
+                                <el-select v-model="deviceType" placeholder="请选择设备类型" class="w-full !rounded-button">
+                                    <el-option label="居民水表" value="residential" />
+                                    <el-option label="非居民水表" value="commercial" />
+                                    <el-option label="消火栓" value="hydrant" />
+                                    <el-option label="智能井盖" value="manhole" />
+                                </el-select>
+                            </el-form-item>
+                            <el-form-item label="监测时间">
+                                <el-date-picker v-model="monitorTime" type="datetime" placeholder="选择监测时间"
+                                    class="w-full !rounded-button" />
+                            </el-form-item>
+                            <el-form-item label="监测位置">
+                                <el-cascader v-model="monitorLocation" :options="locationOptions" placeholder="请选择监测位置"
+                                    class="w-full !rounded-button" />
+                            </el-form-item>
+                        </div>
+                        <div class="bg-gray-50 p-6 rounded-lg mt-6">
+                            <div class="text-base font-medium mb-4">监测数据</div>
+                            <div class="grid grid-cols-1 gap-6">
+                                <el-form-item label="日用水量">
+                                    <el-input v-model="formData.dailyUsage" type="number" placeholder="请输入日用水量"
+                                        class="!rounded-button">
+                                        <template #append>m³</template>
+                                    </el-input>
+                                </el-form-item>
+                            </div>
+                        </div>
+                        <div class="bg-gray-50 p-6 rounded-lg mt-6">
+                            <div class="text-base font-medium mb-4">补充信息</div>
+                            <el-form-item label="备注说明">
+                                <el-input v-model="formData.remark" type="textarea" rows="3" placeholder="请输入备注说明"
+                                    class="!rounded-button" />
+                            </el-form-item>
+                            <el-form-item label="上传附件">
+                                <el-upload class="!rounded-button" action="#" :auto-upload="false" multiple>
+                                    <el-button type="primary" class="!rounded-button">
+                                        <el-icon class="mr-2">
+                                            <Upload />
+                                        </el-icon>添加附件
+                                    </el-button>
+                                    <template #tip>
+                                        <div class="text-gray-400 mt-2">支持扩展名：.rar .zip .doc .docx .pdf .jpg...</div>
+                                    </template>
+                                </el-upload>
+                            </el-form-item>
+                        </div>
+                        <div class="flex justify-center space-x-4 mt-8">
+                            <el-button type="primary" class="w-32 !rounded-button" @click="submitForm">
+                                <el-icon class="mr-2">
+                                    <Check />
+                                </el-icon>提交
+                            </el-button>
+                            <el-button class="w-32 !rounded-button" @click="resetForm">
+                                <el-icon class="mr-2">
+                                    <Refresh />
+                                </el-icon>重置
+                            </el-button>
+                        </div>
+                    </el-form>
+                </div>
+            </el-dialog>
+</template>
+<script lang="ts" setup>
+// 数据填报
+import { ref, onMounted, watch, nextTick, computed, reactive } from 'vue';
+import * as echarts from 'echarts';
+import { Monitor, DataLine, Setting, Lock, Connection, Tools, Fold, Expand, HomeFilled, Timer, Warning, TrendCharts, Odometer, DocumentDelete, Download, Edit, Refresh, Delete, Position, Collection, Link, Goods, SetUp, FolderOpened, Share, Management, Key, User, UserFilled, CircleCheck, Notebook, Guide, Bell, Document, Service, Search, View, List, Grid, Close, ArrowUp, ArrowDown, Check, Upload } from '@element-plus/icons-vue';
+// 删除不需要的图表相关导入
+import { ElMessage, ElMessageBox } from 'element-plus';
+const isCollapse = ref(false);
+const formData = ref({
+    archiveNo: '',
+    dailyUsage: '',
+    remark: ''
+});
+const locationOptions = [
+    {
+        value: 'east',
+        label: '东区',
+        children: [
+            {
+                value: 'e1',
+                label: '1号泵站',
+                children: [
+                    { value: 'e1-1', label: '进水口' },
+                    { value: 'e1-2', label: '出水口' }
+                ]
+            },
+            {
+                value: 'e2',
+                label: '2号泵站',
+                children: [
+                    { value: 'e2-1', label: '进水口' },
+                    { value: 'e2-2', label: '出水口' }
+                ]
+            }
+        ]
+    },
+    {
+        value: 'west',
+        label: '西区',
+        children: [
+            {
+                value: 'w1',
+                label: '3号泵站',
+                children: [
+                    { value: 'w1-1', label: '进水口' },
+                    { value: 'w1-2', label: '出水口' }
+                ]
+            }
+        ]
+    },
+    {
+        value: 'luogang',
+        label: '萝岗',
+        children: [
+            {
+                value: 'l1',
+                label: '4号泵站',
+                children: [
+                    { value: 'l1-1', label: '进水口' },
+                    { value: 'l1-2', label: '出水口' }
+                ]
+            }
+        ]
+    },
+    {
+        value: 'science',
+        label: '科学城',
+        children: [
+            {
+                value: 's1',
+                label: '5号泵站',
+                children: [
+                    { value: 's1-1', label: '进水口' },
+                    { value: 's1-2', label: '出水口' }
+                ]
+            }
+        ]
+    }
+];
+const showReportForm = ref(false);
+const currentPage = ref(1);
+const pageSize = ref(10);
+const total = ref(150);
+const currentChange = (page: number) => {
+    currentPage.value = page;
+    // 这里可以调用接口重新获取数据
+    ElMessage({
+        type: 'success',
+        message: `加载第 ${page} 页数据`
+    });
+};
+const activeTab = ref('residential');
+const residentialData = ref([
+    {
+        time: '2024-01-20 15:30:22',
+        address: '阳光花园 3栋2单元501',
+        meterNo: 'R2024001',
+        usage: '15.6',
+        total: '256.8',
+        reporter: '张工程师'
+    },
+    {
+        time: '2024-01-20 14:25:18',
+        address: '翠湖苑 8栋1单元302',
+        meterNo: 'R2024002',
+        usage: '12.3',
+        total: '189.5',
+        reporter: '李工程师'
+    },
+    {
+        time: '2024-01-20 13:15:45',
+        address: '金色家园 5栋3单元602',
+        meterNo: 'R2024003',
+        usage: '18.9',
+        total: '345.2',
+        reporter: '王工程师'
+    }
+]);
+const commercialData = ref([
+    {
+        time: '2024-01-20 15:30:22',
+        company: '星河商业广场',
+        meterNo: 'C2024001',
+        usage: '526.8',
+        total: '15689.5',
+        reporter: '张工程师'
+    },
+    {
+        time: '2024-01-20 14:25:18',
+        company: '恒泰酒店',
+        meterNo: 'C2024002',
+        usage: '892.3',
+        total: '25463.8',
+        reporter: '李工程师'
+    },
+    {
+        time: '2024-01-20 13:15:45',
+        company: '远大购物中心',
+        meterNo: 'C2024003',
+        usage: '763.5',
+        total: '19856.4',
+        reporter: '王工程师'
+    }
+]);
+const hydrantData = ref([
+    {
+        time: '2024-01-20 15:30:22',
+        location: '东部商务区十字路口',
+        code: 'H2024001',
+        pressure: '0.65',
+        flow: '35.6',
+        reporter: '张工程师'
+    },
+    {
+        time: '2024-01-20 14:25:18',
+        location: '西部居民区公园北门',
+        code: 'H2024002',
+        pressure: '0.72',
+        flow: '38.2',
+        reporter: '李工程师'
+    },
+    {
+        time: '2024-01-20 13:15:45',
+        location: '南部工业园区主干道',
+        code: 'H2024003',
+        pressure: '0.68',
+        flow: '36.8',
+        reporter: '王工程师'
+    }
+]);
+const manholeData = ref([
+    {
+        time: '2024-01-20 15:30:22',
+        location: '东部商务区A街道',
+        code: 'M2024001',
+        status: '正常关闭',
+        angle: '0.5',
+        battery: '85',
+        reporter: '张工程师'
+    },
+    {
+        time: '2024-01-20 14:25:18',
+        location: '西部居民区B路段',
+        code: 'M2024002',
+        status: '正常关闭',
+        angle: '0.8',
+        battery: '92',
+        reporter: '李工程师'
+    },
+    {
+        time: '2024-01-20 13:15:45',
+        location: '南部工业园C区域',
+        code: 'M2024003',
+        status: '正常关闭',
+        angle: '0.3',
+        battery: '78',
+        reporter: '王工程师'
+    }
+]);
+const submitForm = () => {
+    ElMessage({
+        type: 'success',
+        message: '数据提交成功'
+    });
+    showReportForm.value = false;
+    // 更新历史记录
+    historyReports.value.unshift({
+        time: new Date().toLocaleString(),
+        region: selectedRegion.value,
+        deviceType: deviceType.value,
+        location: monitorLocation.value.join('-'),
+        ph: formData.value.ph,
+        turbidity: formData.value.turbidity,
+        chlorine: formData.value.chlorine,
+        reporter: '陈思远'
+    });
+};
+const viewReportDetail = (row: any) => {
+    ElMessageBox.alert(`
+    填报时间：${row.time}
+    监测区域：${row.region}
+    设备类型：${row.deviceType}
+    监测位置：${row.location}
+    pH值：${row.ph}
+    浊度：${row.turbidity}
+    余氯：${row.chlorine}
+    填报人：${row.reporter}
+    `, '填报详情', {
+        confirmButtonText: '关闭'
+    });
+};
+const resetForm = () => {
+    formData.value = {
+        archiveNo: '',
+        dailyUsage: '',
+        remark: ''
+    };
+    selectedRegion.value = '';
+    deviceType.value = '';
+    monitorTime.value = '';
+    monitorLocation.value = [];
+};
+</script>
+<style  scoped>
+</style>

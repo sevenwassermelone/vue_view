@@ -1,0 +1,116 @@
+import { createRouter, createWebHistory } from 'vue-router';
+// import Home from '../views/Home.vue';
+// import About from '../views/About.vue';
+import ssjk from '../views/ssjk.vue';
+import ptzl from '../views/ptzl.vue';
+import ssbj from '../views/ssbj.vue';
+import ddfx from '../views/ddfx.vue';
+import sbwhl from '../views/sbwhl.vue';
+import jxsbbw  from '../views/jxsbbw.vue';
+import lssj from '../views/lssj.vue';
+import bbtj from '../views/bbtj.vue';
+import qsfx from '../views/qsfx.vue';
+import bqgl from '../views/bqgl.vue';
+import jrgl from '../views/jrgl.vue';
+import cpgl from '../views/cpgl.vue';
+import xygl from '../views/xygl.vue';
+import sjtb from '../views/sjtb.vue';
+import sjxf from '../views/sjxf.vue';
+import sjqx from '../views/sjqx.vue';
+import pldc from '../views/pldc.vue';
+// import ssjk from '../components/ssjk.vue';
+
+const routes = [
+  {
+    path: '/ptzl',
+    name: 'ptzl',
+    component: ptzl
+  },
+  {
+    path: '/ssjk',
+    name: 'ssjk',
+    component: ssjk
+  },
+  {
+    path: '/ssbj',
+    name: 'ssbj',
+    component: ssbj
+  },
+  {
+    path: '/ddfx',
+    name: 'ddfx',
+    component: ddfx
+  },
+  {
+    path: '/sbwhl',
+    name: 'sbwhl',
+    component: sbwhl
+  },
+  {
+    path: '/jxsbbw',
+    name: 'jxsbbw',
+    component: jxsbbw
+  },
+  {
+    path: '/qsfx',
+    name: 'qsfx',
+    component: qsfx
+  },
+  {
+    path: '/lssj',
+    name: 'lssj',
+    component: lssj
+  },
+  {
+    path: '/bbtj',
+    name: 'bbtj',
+    component: bbtj
+  },
+  {
+    path: '/xygl',
+    name: 'xygl',
+    component: xygl
+  },
+  {
+    path: '/sjtb',
+    name: 'sjtb',
+    component: sjtb
+  },
+  {
+    path: '/sjxf',
+    name: 'sjxf',
+    component: sjxf
+  },
+  {
+    path: '/sjqx',
+    name: 'sjqx',
+    component: sjqx
+  },
+  {
+    path: '/pldc',
+    name: 'pldc',
+    component: pldc
+  },
+  {
+    path: '/bqgl',
+    name: 'bqgl',
+    component: bqgl
+  },
+  {
+    path: '/jrgl',
+    name: 'jrgl',
+    component: jrgl
+  },
+  {
+    path: '/cpgl',
+    name: 'cpgl',
+    component: cpgl
+  }
+];
+
+const router = createRouter({
+  history: createWebHistory(),
+  routes
+});
+
+export default router;

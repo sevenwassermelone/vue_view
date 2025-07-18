@@ -1,0 +1,95 @@
+import { createRouter, createWebHistory } from 'vue-router';
+// import Home from '../views/Home.vue';
+// import About from '../views/About.vue';
+
+import ptzl from '../views/ptzl.vue';
+import ptmh from '../views/ptmh.vue';
+import wgfw from '../views/wgfw.vue';
+import sqfw from '../views/sqfw.vue';
+import yhfw from '../views/yhfw.vue';
+import sjfw from '../views/sjfw.vue';
+import jsgl from '../views/jsgl.vue';
+import yygl from '../views/yygl.vue';
+import dlrz from '../views/dlrz.vue';
+import fwrz from '../views/fwrz.vue';
+import xxfs from '../views/xxfs.vue';
+import xxfw from '../views/xxfw.vue';
+import ptgl from '../views/ptgl.vue';
+
+
+// import ssjk from '../components/ssjk.vue';
+
+const routes = [
+  {
+    path: '/ptzl',//首页
+    name: 'ptzl',
+    component: ptzl
+  },
+  {
+    path: '/ptmh',//平台门户
+    name: 'ptmh',
+    component: ptmh
+  },
+  {
+    path: '/wgfw',//网关服务
+    name: 'wgfw',
+    component: wgfw
+  },
+  {
+    path: '/sqfw',//授权服务
+    name: 'sqfw',
+    component: sqfw
+  },
+  {
+    path: '/yhfw',//用户服务
+    name: 'yhfw',
+    component: yhfw
+  },
+  {
+    path: '/sjfw',//事件服务
+    name: 'sjfw',
+    component: sjfw
+  },
+  {
+    path: '/jsgl',//角色管理
+    name: 'jsgl',
+    component: jsgl
+  },
+  {
+    path: '/yygl',//应用管理
+    name: 'yygl',
+    component: yygl
+  },
+  {
+    path: '/dlrz',//登录日志
+    name: 'dlrz',
+    component: dlrz
+  },
+  {
+    path: '/fwrz',//访问日志
+    name: 'fwrz',
+    component: fwrz
+  },
+  {
+    path: '/xxfs',//消息发送
+    name: 'xxfs',
+    component: xxfs
+  },
+  {
+    path: '/xxfw',//消息服务
+    name: 'xxfw',
+    component: xxfw
+  },
+  {
+    path: '/ptgl',//平台管理
+    name: 'ptgl',
+    component: ptgl
+  }
+];
+
+const router = createRouter({
+  history: createWebHistory(),
+  routes
+});
+
+export default router;

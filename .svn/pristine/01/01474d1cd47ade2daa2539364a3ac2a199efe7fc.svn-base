@@ -1,0 +1,443 @@
+<template>
+ <!-- 搜索和筛选区域 -->
+ <div class="bg-white p-4 rounded-lg shadow-sm mb-4">
+                <div class="flex items-center space-x-4 mb-4">
+                    <el-select v-model="selectedRegion" placeholder="监测区域" class="!rounded-button">
+                        <el-option label="全部区域" value="all" />
+                        <el-option label="东部区域" value="east" />
+                        <el-option label="西部区域" value="west" />
+                        <el-option label="南部区域" value="south" />
+                        <el-option label="北部区域" value="north" />
+                    </el-select>
+                    <el-select v-model="dataType" placeholder="数据类型" class="!rounded-button">
+                        <el-option label="原始数据" value="raw" />
+                        <el-option label="校正数据" value="calibrated" />
+                        <el-option label="告警数据" value="alarm" />
+                    </el-select>
+                    <el-select v-model="timeRange" placeholder="时间段" class="!rounded-button">
+                        <el-option label="最近1小时" value="1h" />
+                        <el-option label="最近24小时" value="24h" />
+                        <el-option label="最近7天" value="7d" />
+                        <el-option label="最近30天" value="30d" />
+                        <el-option label="自定义" value="custom" />
+                    </el-select>
+                    <el-date-picker v-model="dateRange" type="datetimerange" range-separator="至"
+                        start-placeholder="开始时间" end-placeholder="结束时间" :default-time="[
+                            new Date(2000, 1, 1, 0, 0, 0),
+                            new Date(2000, 1, 1, 23, 59, 59)
+                        ]" class="!rounded-button" v-show="timeRange === 'custom'" />
+                </div>
+                <div class="flex items-center space-x-4">
+                    <el-input v-model="searchKeyword" placeholder="请输入设备ID、名称或位置搜索" class="flex-1 !rounded-button">
+                        <template #prefix>
+                            <el-icon class="ml-2">
+                                <Search />
+                            </el-icon>
+                        </template>
+                    </el-input>
+                    <el-button type="primary" class="!rounded-button whitespace-nowrap">
+                        <el-icon class="mr-1">
+                            <Search />
+                        </el-icon>
+                        搜索
+                    </el-button>
+                    <el-button type="success" class="!rounded-button whitespace-nowrap">
+                        <el-icon class="mr-1">
+                            <Download />
+                        </el-icon>
+                        导出数据
+                    </el-button>
+                </div>
+            </div>
+            <!-- 数据列表 -->
+            <div class="bg-white p-4 rounded-lg shadow-sm">
+                <div class="mb-4">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="text-lg font-medium">历史数据记录</div>
+                        <div class="flex items-center space-x-2">
+                            <el-radio-group v-model="viewType" size="small">
+                                <el-radio-button label="table" class="!rounded-button">
+                                    <el-icon>
+                                        <List />
+                                    </el-icon>
+                                </el-radio-button>
+                                <el-radio-button label="chart" class="!rounded-button">
+                                    <el-icon>
+                                        <TrendCharts />
+                                    </el-icon>
+                                </el-radio-button>
+                            </el-radio-group>
+                        </div>
+                    </div>
+                    <el-tabs v-model="activeTab" class="border-b mb-4">
+                        <el-tab-pane label="居民水表" name="residential"></el-tab-pane>
+                        <el-tab-pane label="非居民水表" name="nonResidential"></el-tab-pane>
+                        <el-tab-pane label="消火栓" name="hydrant"></el-tab-pane>
+                        <el-tab-pane label="智能井盖" name="manhole"></el-tab-pane>
+                    </el-tabs>
+                </div>
+                <!-- 表格视图 -->
+                <el-table v-if="viewType === 'table'" :data="historyData" border stripe style="width: 100%"
+                    height="600">
+                    <el-table-column type="index" width="60" />
+                    <el-table-column prop="time" label="采集时间" width="180" />
+                    <el-table-column prop="deviceId" label="设备编号" width="120" />
+                    <el-table-column prop="deviceName" label="设备名称" width="150" />
+                    <el-table-column prop="location" label="安装位置" width="150" />
+                    <template v-if="activeTab === 'residential' || activeTab === 'nonResidential'">
+                        <el-table-column prop="meterReading" label="表读数(m³)" width="120" />
+                        <el-table-column prop="waterConsumption" label="用水量(m³)" width="120" />
+                        <el-table-column prop="flowRate" label="流量(m³/h)" width="120" />
+                        <el-table-column prop="batteryLevel" label="电池电量" width="100" />
+                    </template>
+                    <template v-else-if="activeTab === 'hydrant'">
+                        <el-table-column prop="pressure" label="水压(MPa)" width="120" />
+                        <el-table-column prop="flowRate" label="流量(m³/h)" width="120" />
+                        <el-table-column prop="temperature" label="温度(℃)" width="120" />
+                        <el-table-column prop="batteryLevel" label="电池电量" width="100" />
+                        <el-table-column prop="lastUsed" label="最后使用时间" width="150" />
+                    </template>
+                    <template v-else-if="activeTab === 'manhole'">
+                        <el-table-column prop="waterLevel" label="水位(m)" width="120" />
+                        <el-table-column prop="gasLevel" label="气体浓度" width="120" />
+                        <el-table-column prop="coverStatus" label="井盖状态" width="120" />
+                        <el-table-column prop="batteryLevel" label="电池电量" width="100" />
+                        <el-table-column prop="lastMaintenance" label="最后维护时间" width="150" />
+                    </template>
+                    <el-table-column prop="status" label="状态" width="100">
+                        <template #default="{ row }">
+                            <el-tag :type="row.status === 'normal' ? 'success' : 'danger'" class="!rounded-button">
+                                {{ row.status === 'normal' ? '正常' : '异常' }}
+                            </el-tag>
+                        </template>
+                    </el-table-column>
+                    <el-table-column label="操作" fixed="right" width="150">
+                        <template #default="{ row }">
+                            <el-button link type="primary" @click="viewDetail(row)">
+                                <el-icon>
+                                    <View />
+                                </el-icon>
+                                详情
+                            </el-button>
+                            <el-button link type="primary" @click="exportSingle(row)">
+                                <el-icon>
+                                    <Download />
+                                </el-icon>
+                                导出
+                            </el-button>
+                        </template>
+                    </el-table-column>
+                </el-table>
+                <!-- 图表视图 -->
+                <div v-else class="h-[600px]" ref="historyChart"></div>
+                <!-- 分页 -->
+                <div class="flex justify-end mt-4">
+                    <el-pagination v-model:current-page="currentPage" v-model:page-size="pageSize"
+                        :page-sizes="[10, 20, 50, 100]" layout="total, sizes, prev, pager, next, jumper"
+                        :total="totalRecords" class="!rounded-button" />
+                </div>
+            </div>
+</template>
+<script lang="ts" setup>
+// 历史数据
+import { ref, onMounted, watch, nextTick, computed } from 'vue';
+import * as echarts from 'echarts';
+import { Monitor, DataLine, Setting, Lock, Connection, Tools, Fold, Expand, HomeFilled, Timer, Warning, TrendCharts, Odometer, DocumentDelete, Download, Edit, Refresh, Delete, Position, Collection, Link, Goods, SetUp, FolderOpened, Share, Management, Key, User, UserFilled, CircleCheck, Notebook, Guide, Bell, Document, Service, Search, View, List, FullScreen } from '@element-plus/icons-vue';
+// 删除不需要的图表相关导入
+import { ElMessage, ElMessageBox } from 'element-plus';
+
+
+
+const selectedRegion = ref('all');
+const dataType = ref('');
+const dateRange = ref<[Date, Date] | null>(null);
+const searchKeyword = ref('');
+const timeRange = ref('24h');
+const viewType = ref('table');
+const activeTab = ref('residential');
+const currentPage = ref(1);
+const pageSize = ref(20);
+const totalRecords = ref(1458);
+const tabData = {
+    residential: [
+        {
+            time: '2025-02-27 00:30:22',
+            deviceId: '01902024001',
+            deviceName: '东城雅苑A栋1单元502',
+            location: '东城雅苑A栋1单元502',
+            meterReading: '125.6',
+            waterConsumption: '12.3',
+            flowRate: '0.42',
+            pressure: '0.35',
+            batteryLevel: '85%',
+            status: 'normal'
+        },
+        {
+            time: '2025-02-27 00:25:22',
+            deviceId: '01902024002',
+            deviceName: '东城雅苑A栋2单元303',
+            location: '东城雅苑A栋2单元303',
+            meterReading: '238.4',
+            waterConsumption: '15.7',
+            flowRate: '0.38',
+            pressure: '0.32',
+            batteryLevel: '92%',
+            status: 'normal'
+        },
+        {
+            time: '2025-02-27 00:20:22',
+            deviceId: '01902024003',
+            deviceName: '东城雅苑A栋3单元601',
+            location: '东城雅苑A栋3单元601',
+            meterReading: '342.8',
+            waterConsumption: '18.2',
+            flowRate: '0.45',
+            pressure: '0.38',
+            batteryLevel: '88%',
+            status: 'normal'
+        },
+        {
+            time: '2025-02-27 00:15:22',
+            deviceId: '01902024004',
+            deviceName: '东城雅苑A栋4单元802',
+            location: '东城雅苑A栋4单元802',
+            meterReading: '156.2',
+            waterConsumption: '10.8',
+            flowRate: '0.36',
+            pressure: '0.31',
+            batteryLevel: '95%',
+            status: 'normal'
+        },
+        {
+            time: '2025-02-27 00:10:22',
+            deviceId: '01902024005',
+            deviceName: '凯信东方华庭5栋2单元1203',
+            location: '凯信东方华庭5栋2单元1203',
+            meterReading: '428.5',
+            waterConsumption: '22.4',
+            flowRate: '0.48',
+            pressure: '0.36',
+            batteryLevel: '82%',
+            status: 'error'
+        },
+        {
+            time: '2025-02-27 00:05:22',
+            deviceId: '01902024006',
+            deviceName: '明悦居7栋1单元1501',
+            location: '明悦居7栋1单元1501',
+            meterReading: '265.3',
+            waterConsumption: '16.5',
+            flowRate: '0.41',
+            pressure: '0.33',
+            batteryLevel: '90%',
+            status: 'normal'
+        },
+        {
+            time: '2025-02-27 00:00:22',
+            deviceId: '01902024007',
+            deviceName: '东荟城9栋2单元1802',
+            location: '东荟城9栋2单元1802',
+            meterReading: '385.7',
+            waterConsumption: '19.8',
+            flowRate: '0.44',
+            pressure: '0.35',
+            batteryLevel: '87%',
+            status: 'normal'
+        },
+        {
+            time: '2025-02-27 00:55:22',
+            deviceId: '01902024008',
+            deviceName: '东荟城15栋3单元902',
+            location: '东荟城15栋3单元902',
+            meterReading: '198.4',
+            waterConsumption: '14.2',
+            flowRate: '0.39',
+            pressure: '0.34',
+            batteryLevel: '93%',
+            status: 'normal'
+        },
+        {
+            time: '2025-02-27 00:50:22',
+            deviceId: '01907089537',
+            deviceName: '保利拾光年4栋1单元2101',
+            location: '保利拾光年4栋1单元2101',
+            meterReading: '445.2',
+            waterConsumption: '23.6',
+            flowRate: '0.47',
+            pressure: '0.37',
+            batteryLevel: '84%',
+            status: 'error'
+        },
+        {
+            time: '2025-02-27 00:45:22',
+            deviceId: '0216000041',
+            deviceName: '宏康一期8栋4单元1602',
+            location: '东区宏康六期1栋1501',
+            meterReading: '276.8',
+            waterConsumption: '17.3',
+            flowRate: '0.43',
+            pressure: '0.34',
+            batteryLevel: '89%',
+            status: 'normal'
+        }
+    ],
+    nonResidential: [
+        {
+            time: '2025-02-27 00:30:22',
+            deviceId: '161260499',
+            deviceName: 'TCL云计算产业园（科学城）',
+            location: 'TCL云计算产业园',
+            meterReading: '2856.8',
+            waterConsumption: '325.4',
+            flowRate: '1.25',
+            pressure: '0.45',
+            batteryLevel: '90%',
+            status: 'normal'
+        },
+        {
+            time: '2025-02-27 00:25:22',
+            deviceId: '200415582',
+            deviceName: '爱莎教育咨询有限公司01',
+            location: '爱莎教育咨询有限公司',
+            meterReading: '4521.6',
+            waterConsumption: '468.2',
+            flowRate: '1.85',
+            pressure: '0.52',
+            batteryLevel: '88%',
+            status: 'error'
+        },
+        {
+            time: '2025-02-27 00:20:22',
+            deviceId: '201288533',
+            deviceName: '百事高厂房01',
+            location: '百事高厂房',
+            meterReading: '3652.4',
+            waterConsumption: '385.6',
+            flowRate: '1.45',
+            pressure: '0.48',
+            batteryLevel: '92%',
+            status: 'normal'
+        },
+        {
+            time: '2025-02-27 00:15:22',
+            deviceId: '200311424',
+            deviceName: '广东广慧高速公路有限公司01',
+            location: '广东广慧高速公路有限公司',
+            meterReading: '5234.8',
+            waterConsumption: '524.2',
+            flowRate: '2.15',
+            pressure: '0.56',
+            batteryLevel: '85%',
+            status: 'normal'
+        },
+        {
+            time: '2025-02-27 00:10:22',
+            deviceId: '200515945',
+            deviceName: '广东浩和建筑股份有限公司',
+            location: '广东浩和建筑股份有限公司',
+            meterReading: '4125.6',
+            waterConsumption: '428.5',
+            flowRate: '1.75',
+            pressure: '0.51',
+            batteryLevel: '87%',
+            status: 'normal'
+        },
+        {
+            time: '2025-02-27 00:05:22',
+            deviceId: '180511339',
+            deviceName: '广东频谱管理大队营区01',
+            location: '广东频谱管理大队营区',
+            meterReading: '3856.2',
+            waterConsumption: '365.8',
+            flowRate: '1.55',
+            pressure: '0.49',
+            batteryLevel: '89%',
+            status: 'normal'
+        },
+        {
+            time: '2025-02-27 00:00:22',
+            deviceId: '200311637',
+            deviceName: '广州建筑园林股份有限公司',
+            location: '广深高速(玉树公园-增城黄埔界) 沿线绿化景观',
+            meterReading: '6852.4',
+            waterConsumption: '685.6',
+            flowRate: '2.85',
+            pressure: '0.62',
+            batteryLevel: '91%',
+            status: 'normal'
+        },
+        {
+            time: '2025-02-27 00:55:22',
+            deviceId: 'CM-2024008',
+            deviceName: '香格里拉大酒店',
+            location: '罗湖区建设路',
+            meterReading: '4568.5',
+            waterConsumption: '458.4',
+            flowRate: '1.95',
+            pressure: '0.53',
+            batteryLevel: '86%',
+            status: 'error'
+        }
+    ],
+    hydrant: [
+        {
+            time: '2025-02-27 00:30:22',
+            deviceId: 'F7E3C9EC000C2B',
+            deviceName: '开创大道',
+            location: '开创大道',
+            pressure: '0.68',
+            flowRate: '0',
+            temperature: '26.5',
+            batteryLevel: '95%',
+            lastUsed: '2024-01-15',
+            status: 'normal'
+        },
+        {
+            time: '2025-02-27 00:25:22',
+            deviceId: '862447060018322',
+            deviceName: '兴隆大道2号',
+            location: '兴隆大道',
+            pressure: '0.72',
+            flowRate: '1.25',
+            temperature: '26.8',
+            batteryLevel: '87%',
+            lastUsed: '2025-02-27',
+            status: 'normal'
+        }
+    ],
+    manhole: [
+        {
+            time: '2025-02-27 00:30:22',
+            deviceId: 'MH-2025005',
+            deviceName: '科学城井盖-C15',
+            location: '开创大道',
+            waterLevel: '0.15',
+            gasLevel: '正常',
+            coverStatus: '关闭',
+            batteryLevel: '92%',
+            lastMaintenance: '2025-05-10',
+            status: 'normal'
+        },
+        {
+            time: '2025-02-27 00:25:22',
+            deviceId: 'MH-2025007',
+            deviceName: '萝岗井盖-D23',
+            location: '兴隆大道',
+            waterLevel: '0.45',
+            gasLevel: '警告',
+            coverStatus: '关闭',
+            batteryLevel: '76%',
+            lastMaintenance: '2025-05-05',
+            status: 'error'
+        }
+    ]
+};
+const historyData = computed(() => tabData[activeTab.value] || []);
+const historyChart = ref<HTMLElement | null>(null);
+
+
+
+
+</script>
+<style  scoped>
+</style>

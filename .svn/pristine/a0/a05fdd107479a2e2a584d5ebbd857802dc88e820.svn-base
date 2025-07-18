@@ -1,0 +1,172 @@
+import { createRouter, createWebHistory } from 'vue-router';
+// import Home from '../views/Home.vue';
+// import About from '../views/About.vue';
+import ssjk from '../views/ssjk.vue';
+import ptzl from '../views/ptzl.vue';
+import ssbj from '../views/ssbj.vue';
+import ddfx from '../views/ddfx.vue';
+import sbwhl from '../views/sbwhl.vue';
+import jxsbbw  from '../views/jxsbbw.vue';
+import lssj from '../views/lssj.vue';
+import bbtj from '../views/bbtj.vue';
+import qsfx from '../views/qsfx.vue';
+import bqgl from '../views/bqgl.vue';
+import jrgl from '../views/jrgl.vue';
+import cpgl from '../views/cpgl.vue';
+import sbgl from '../views/sbgl.vue';
+import fzgl from '../views/fzgl.vue';
+import qxgz from '../views/qxgz.vue';
+import bjmcj from '../views/bjmcj.vue';
+import yhgl from '../views/yhgl.vue';
+import qxfp from '../views/qxfp.vue';
+import fwrz from '../views/fwrz.vue';
+import sjsq from '../views/sjsq.vue';
+
+import xygl from '../views/xygl.vue';
+import sjtb from '../views/sjtb.vue';
+import sjxf from '../views/sjxf.vue';
+import sjqx from '../views/sjqx.vue';
+import pldc from '../views/pldc.vue';
+
+import ycsz from '../views/ycsz.vue';
+// import ssjk from '../components/ssjk.vue';
+
+const routes = [
+  {
+    path: '/ptzl',//平台总览
+    name: 'ptzl',
+    component: ptzl
+  },
+  {
+    path: '/ssjk',//实时监控
+    name: 'ssjk',
+    component: ssjk
+  },
+  {
+    path: '/ssbj',//实时报警
+    name: 'ssbj',
+    component: ssbj
+  },
+  {
+    path: '/ddfx',//单点分析
+    name: 'ddfx',
+    component: ddfx
+  },
+  {
+    path: '/sbwhl',//设备完好率
+    name: 'sbwhl',
+    component: sbwhl
+  },
+  {
+    path: '/jxsbbw',//解码失败报文
+    name: 'jxsbbw',
+    component: jxsbbw
+  },
+  {
+    path: '/qsfx',//趋势分析
+    name: 'qsfx',
+    component: qsfx
+  },
+  {
+    path: '/lssj',//历史数据
+    name: 'lssj',
+    component: lssj
+  },
+  {
+    path: '/bbtj',//报表统计
+    name: 'bbtj',
+    component: bbtj
+  },
+  {
+    path: '/xygl',//协议管理
+    name: 'xygl',
+    component: xygl
+  },
+  {
+    path: '/sjtb',//数据填报
+    name: 'sjtb',
+    component: sjtb
+  },
+  {
+    path: '/sjxf',//数据修复
+    name: 'sjxf',
+    component: sjxf
+  },
+  {
+    path: '/sjqx',//数据清洗
+    name: 'sjqx',
+    component: sjqx
+  },
+  {
+    path: '/pldc',//授权管理
+    name: 'pldc',
+    component: pldc
+  },
+  {
+    path: '/bqgl',//标签管理
+    name: 'bqgl',
+    component: bqgl
+  },
+  {
+    path: '/jrgl',//接入管理
+    name: 'jrgl',
+    component: jrgl
+  },
+  {
+    path: '/cpgl',//产品管理
+    name: 'cpgl',
+    component: cpgl
+  },
+  {
+    path: '/ycsz',//远传设置
+    name: 'ycsz',
+    component: ycsz
+  },
+  {
+    path: '/sbgl',//设备管理
+    name: 'sbgl',
+    component: sbgl
+  },
+  {
+    path: '/fzgl',//分组管理
+    name: 'fzgl',
+    component: fzgl
+  },
+  {
+    path: '/qxgz',//清洗规则
+    name: 'qxgz',
+    component: qxgz
+  },
+  {
+    path: '/bjmcj',//编解码插件
+    name: 'bjmcj',
+    component: bjmcj
+  },
+  {
+    path: '/yhgl',//用户管理
+    name: 'yhgl',
+    component: yhgl
+  },
+  {
+    path: '/qxfp',//权限分配
+    name: 'qxfp',
+    component: qxfp
+  },
+  {
+    path: '/fwrz',//访问日志
+    name: 'fwrz',
+    component: fwrz
+  },
+  {
+    path: '/sjsq',//数据授权
+    name: 'sjsq',
+    component: sjsq
+  }
+];
+
+const router = createRouter({
+  history: createWebHistory(),
+  routes
+});
+
+export default router;

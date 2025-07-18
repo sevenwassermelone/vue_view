@@ -1,0 +1,393 @@
+<template>
+    <!-- 搜索框 -->
+    <div class="bg-white p-4 rounded-lg shadow-sm mb-4 flex items-center space-x-4">
+                <el-input v-model="searchDevice" placeholder="请输入设备ID、名称或安装位置搜索" class="flex-1 !rounded-button"
+                    size="large">
+                    <template #prefix>
+                        <el-icon class="ml-2">
+                            <Search />
+                        </el-icon>
+                    </template>
+                </el-input>
+                <el-button type="primary" class="!rounded-button whitespace-nowrap" size="large">
+                    <el-icon class="mr-1">
+                        <Search />
+                    </el-icon>
+                    搜索
+                </el-button>
+            </div>
+            <!-- 设备基本信息 -->
+            <div class="bg-white p-6 rounded-lg shadow-sm mb-4">
+                <div class="flex items-center justify-between mb-6">
+                    <div class="flex items-center space-x-4">
+                        <el-icon class="text-2xl text-blue-500">
+                            <Monitor />
+                        </el-icon>
+                        <div>
+                            <h2 class="text-lg font-medium">百事高厂房01</h2>
+                            <p class="text-gray-500 text-sm mt-1">设备型号：WQ-2000 · 安装位置：百事高厂房</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-3">
+                        <el-tag type="success" class="!rounded-button">在线</el-tag>
+                        <el-button type="primary" class="!rounded-button whitespace-nowrap">
+                            <el-icon class="mr-1">
+                                <Setting />
+                            </el-icon>
+                            远程控制
+                        </el-button>
+                    </div>
+                </div>
+                <!-- 实时数据卡片 -->
+                <div class="grid grid-cols-4 gap-4 mb-6">
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <div class="text-gray-500 text-sm mb-2">瞬时流量(m³/h)</div>
+                        <div class="text-2xl font-medium">125.6</div>
+                        <div class="text-xs text-green-500 mt-2">较昨日 +3.2</div>
+                    </div>
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <div class="text-gray-500 text-sm mb-2">压力(MPa)</div>
+                        <div class="text-2xl font-medium">0.45</div>
+                        <div class="text-xs text-green-500 mt-2">标准范围内</div>
+                    </div>
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <div class="text-gray-500 text-sm mb-2">累计流量(m³)</div>
+                        <div class="text-2xl font-medium">45682.5</div>
+                        <div class="text-xs text-blue-500 mt-2">本月累计</div>
+                    </div>
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <div class="text-gray-500 text-sm mb-2">日用水量(m³)</div>
+                        <div class="text-2xl font-medium">856.3</div>
+                        <div class="text-xs text-gray-500 mt-2">正常范围</div>
+                    </div>
+                </div>
+                <!-- 数据分析标签页 -->
+                <el-tabs v-model="activeTab" class="border-t pt-4">
+                    <el-tab-pane label="实时数据" name="realtime">
+                        <div class="h-80" ref="realtimeChart"></div>
+                    </el-tab-pane>
+                    <el-tab-pane label="综合报表" name="report">
+                        <div class="flex space-x-4 mb-4">
+                            <el-radio-group v-model="reportType" class="!rounded-button">
+                                <el-radio-button label="daily">日报</el-radio-button>
+                                <el-radio-button label="monthly">月报</el-radio-button>
+                                <el-radio-button label="yearly">年报</el-radio-button>
+                            </el-radio-group>
+                            <el-date-picker v-model="reportDate"
+                                :type="reportType === 'daily' ? 'date' : reportType === 'monthly' ? 'month' : 'year'"
+                                class="!rounded-button" />
+                        </div>
+                        <el-table :data="reportData" border stripe class="w-full">
+                            <el-table-column prop="time" label="时间" width="180" />
+                            <el-table-column prop="flow" label="瞬时流量(m³/h)" />
+                            <el-table-column prop="pressure" label="压力(MPa)" />
+                            <el-table-column prop="totalFlow" label="累计流量(m³)" />
+                            <el-table-column prop="waterUsage" label="日用水量(m³)" />
+                        </el-table>
+                    </el-tab-pane>
+                    <el-tab-pane label="预警信息" name="warning">
+                        <el-table :data="warningData" border stripe class="w-full">
+                            <el-table-column prop="time" label="发生时间" width="180" />
+                            <el-table-column prop="type" label="预警类型" />
+                            <el-table-column prop="value" label="预警值" />
+                            <el-table-column prop="status" label="状态">
+                                <template #default="scope">
+                                    <el-tag :type="scope.row.status === '已处理' ? 'success' : 'danger'"
+                                        class="!rounded-button">
+                                        {{ scope.row.status }}
+                                    </el-tag>
+                                </template>
+                            </el-table-column>
+                            <el-table-column label="操作" width="150">
+                                <template #default="scope">
+                                    <el-button link type="primary" @click="handleWarning(scope.row)">处理</el-button>
+                                    <el-button link type="primary" @click="viewDetail(scope.row)">详情</el-button>
+                                </template>
+                            </el-table-column>
+                        </el-table>
+                    </el-tab-pane>
+                    <el-tab-pane label="原始报文" name="raw">
+                        <el-input v-model="searchKey" placeholder="搜索报文内容" class="mb-4 !rounded-button">
+                            <template #prefix>
+                                <el-icon class="ml-2">
+                                    <Search />
+                                </el-icon>
+                            </template>
+                        </el-input>
+                        <el-table :data="messageData" border stripe class="w-full">
+                            <el-table-column prop="time" label="时间" width="180" />
+                            <el-table-column prop="hex" label="HEX值" />
+                            <el-table-column prop="parsed" label="解析结果" />
+                            <el-table-column prop="status" label="状态">
+                                <template #default="scope">
+                                    <el-tag :type="scope.row.status === 'success' ? 'success' : 'danger'"
+                                        class="!rounded-button">
+                                        {{ scope.row.status === 'success' ? '正常' : '异常' }}
+                                    </el-tag>
+                                </template>
+                            </el-table-column>
+                        </el-table>
+                    </el-tab-pane>
+                    <el-tab-pane label="数据同比" name="yearOnYear">
+                        <!-- <div class="h-80" ref="yearOnYearChart"></div> -->
+                        <div class="h-80" >
+                            <img :src="sjtbUrl">
+                        </div>
+                        
+                    </el-tab-pane>
+                    <el-tab-pane label="数据环比" name="chainRatio">
+                        <!-- <div class="h-80" ref="chainRatioChart"></div> -->
+                        <div class="h-80" >
+                            <img :src="sjhbUrl">
+                        </div>
+                    </el-tab-pane>
+                </el-tabs>
+            </div>
+</template>
+<script lang="ts" setup>
+import { ref, onMounted, watch, nextTick, computed } from 'vue';
+import { Monitor, DataLine, Setting, Lock, Connection, Tools, Fold, Expand, HomeFilled, Timer, Warning, TrendCharts, Odometer, DocumentDelete, Download, Edit, Refresh, Delete, Position, Collection, Link, Goods, SetUp, FolderOpened, Share, Management, Key, User, UserFilled, CircleCheck, Notebook, Guide, Bell, Document, Service, Search, View, List, Grid, Close, ArrowUp, ArrowDown } from '@element-plus/icons-vue';
+import type { EChartsOption } from 'echarts';
+import * as echarts from 'echarts';
+import { ElMessage, ElMessageBox } from 'element-plus';
+
+const modelType = ref('');
+const activeTab = ref('realtime');
+const reportType = ref('daily');
+const reportDate = ref(new Date());
+const searchKey = ref('');
+const searchDevice = ref('');
+const isCollapse = ref(false);
+// 图表实例
+const realtimeChart = ref<HTMLElement | null>(null);
+const yearOnYearChart = ref<HTMLElement | null>(null);
+const chainRatioChart = ref<HTMLElement | null>(null);
+let chartInstance: echarts.ECharts | null = null;
+let yearOnYearChartInstance: echarts.ECharts | null = null;
+let chainRatioChartInstance: echarts.ECharts | null = null;
+
+const sjtbUrl = 'http://192.168.120.103:5173/img/数据同比.png';
+const sjhbUrl = 'http://192.168.120.103:5173/img/数据环比.png';
+
+
+// 模拟数据
+const reportData = ref([
+    {
+        time: '2024-01-20 00:00',
+        flow: '125.6',
+        pressure: '0.45',
+        totalFlow: '45682.5',
+        waterUsage: '856.3'
+    },
+    {
+        time: '2024-01-20 01:00',
+        flow: '128.4',
+        pressure: '0.46',
+        totalFlow: '45808.1',
+        waterUsage: '862.7'
+    },
+    // 更多数据...
+]);
+
+const messageData = ref([
+    {
+        time: '2024-01-20 14:35:22',
+        hex: '0A 45 67 89 BC DE',
+        parsed: 'pH:7.2,Turb:0.35,Cl:0.42',
+        status: 'success'
+    },
+    {
+        time: '2024-01-20 14:34:22',
+        hex: '0A 45 67 89 BC FF',
+        parsed: 'Error: Invalid checksum',
+        status: 'error'
+    },
+    // 更多数据...
+]);
+// 初始化图表
+onMounted(() => {
+    nextTick(() => {
+        // 初始化实时数据图表
+        if (realtimeChart.value) {
+            chartInstance = echarts.init(realtimeChart.value);
+            const option: EChartsOption = {
+                animation: false,
+                tooltip: {
+                    trigger: 'axis'
+                },
+                legend: {
+                    data: ['瞬时流量', '压力', '累计流量', '日用水量']
+                },
+                grid: {
+                    left: '3%',
+                    right: '4%',
+                    bottom: '3%',
+                    containLabel: true
+                },
+                xAxis: {
+                    type: 'category',
+                    boundaryGap: false,
+                    data: ['14:30', '14:31', '14:32', '14:33', '14:34', '14:35']
+                },
+                yAxis: [
+                    {
+                        type: 'value',
+                        name: '流量(m³/h)',
+                        min: 0,
+                        max: 200
+                    },
+                    {
+                        type: 'value',
+                        name: '压力(MPa)',
+                        min: 0,
+                        max: 1
+                    }
+                ],
+                series: [
+                    {
+                        name: '瞬时流量',
+                        type: 'line',
+                        yAxisIndex: 0,
+                        data: [125.6, 126.2, 124.8, 127.3, 125.9, 125.6]
+                    },
+                    {
+                        name: '压力',
+                        type: 'line',
+                        yAxisIndex: 1,
+                        data: [0.45, 0.46, 0.44, 0.47, 0.45, 0.45]
+                    },
+                    {
+                        name: '累计流量',
+                        type: 'line',
+                        yAxisIndex: 0,
+                        data: [45682.5, 45808.7, 45934.5, 46061.8, 46187.7, 46313.3]
+                    },
+                    {
+                        name: '日用水量',
+                        type: 'line',
+                        yAxisIndex: 0,
+                        data: [856.3, 862.7, 859.4, 865.2, 858.9, 860.1]
+                    }
+                ]
+            };
+            chartInstance.setOption(option);
+        }
+
+        // 初始化同比数据图表
+        if (yearOnYearChart.value) {
+            yearOnYearChartInstance = echarts.init(yearOnYearChart.value);
+            const yearOnYearOption: EChartsOption = {
+                animation: false,
+                tooltip: {
+                    trigger: 'axis'
+                },
+                legend: {
+                    data: ['本期数据', '去年同期']
+                },
+                grid: {
+                    left: '3%',
+                    right: '4%',
+                    bottom: '3%',
+                    containLabel: true
+                },
+                xAxis: {
+                    type: 'category',
+                    boundaryGap: false,
+                    data: ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月']
+                },
+                yAxis: {
+                    type: 'value',
+                    name: '用水量(m³)'
+                },
+                series: [
+                    {
+                        name: '本期数据',
+                        type: 'line',
+                        data: [2500, 2800, 3200, 3100, 3600, 3800, 4200, 4100, 3900, 3700, 3500, 3300]
+                    },
+                    {
+                        name: '去年同期',
+                        type: 'line',
+                        data: [2300, 2600, 3000, 2900, 3400, 3600, 4000, 3900, 3700, 3500, 3300, 3100]
+                    }
+                ]
+            };
+            yearOnYearChartInstance.setOption(yearOnYearOption);
+        }
+
+        // 初始化环比数据图表
+        if (chainRatioChart.value) {
+            chainRatioChartInstance = echarts.init(chainRatioChart.value);
+            const chainRatioOption: EChartsOption = {
+                animation: false,
+                tooltip: {
+                    trigger: 'axis'
+                },
+                legend: {
+                    data: ['本月数据', '上月数据']
+                },
+                grid: {
+                    left: '3%',
+                    right: '4%',
+                    bottom: '3%',
+                    containLabel: true
+                },
+                xAxis: {
+                    type: 'category',
+                    boundaryGap: false,
+                    data: ['1日', '5日', '10日', '15日', '20日', '25日', '30日']
+                },
+                yAxis: {
+                    type: 'value',
+                    name: '用水量(m³)'
+                },
+                series: [
+                    {
+                        name: '本月数据',
+                        type: 'line',
+                        data: [850, 900, 920, 880, 925, 915, 930]
+                    },
+                    {
+                        name: '上月数据',
+                        type: 'line',
+                        data: [820, 870, 890, 850, 895, 885, 900]
+                    }
+                ]
+            };
+            chainRatioChartInstance.setOption(chainRatioOption);
+        }
+    });
+});
+// 处理预警
+const handleWarning = (row: any) => {
+    ElMessageBox.confirm('确认处理该预警吗？', '提示', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+    }).then(() => {
+        ElMessage({
+            type: 'success',
+            message: '预警处理成功'
+        });
+    }).catch(() => { });
+};
+// 查看详情
+const viewDetail = (row: any) => {
+    ElMessageBox.alert(`预警详情：${row.type} - ${row.value}`, '预警详情', {
+        confirmButtonText: '确定'
+    });
+};
+// 监听窗口大小变化
+watch(() => isCollapse.value, () => {
+    nextTick(() => {
+        chartInstance?.resize();
+        yearOnYearChartInstance?.resize();
+        chainRatioChartInstance?.resize();
+    });
+});
+
+
+</script>
+<style scoped>
+
+</style>

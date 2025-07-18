@@ -1,0 +1,169 @@
+<template>
+    <div class="bg-white p-6 rounded-lg shadow-sm">
+                <!-- 查询条件 -->
+                <div class="space-y-4">
+                    <div class="grid grid-cols-4 gap-6">
+                        <el-select v-model="selectedArea" placeholder="选择设备所属区域" class="w-full">
+                            <el-option v-for="area in areas" :key="area.id" :label="area.name" :value="area.id" />
+                        </el-select>
+                        <el-select v-model="selectedModel" placeholder="选择设备类型" class="w-full">
+                            <el-option v-for="model in deviceModels" :key="model.id" :label="model.name"
+                                :value="model.id" />
+                        </el-select>
+                        <el-select v-model="selectedStation" placeholder="选择站点" class="w-full">
+                            <el-option v-for="station in stations" :key="station.id" :label="station.name"
+                                :value="station.id" />
+                        </el-select>
+                        <el-date-picker v-model="dateRange" type="daterange" range-separator="至"
+                            start-placeholder="开始日期" end-placeholder="结束日期" class="w-full" />
+                    </div>
+                    <div class="flex justify-end">
+                        <el-button type="primary" class="!rounded-button whitespace-nowrap" @click="generateExport">
+                            <el-icon class="mr-1">
+                                <Download />
+                            </el-icon>
+                            生成导出文件
+                        </el-button>
+                    </div>
+                </div>
+                <!-- 导出记录列表 -->
+                <div class="mt-8">
+                    <el-table :data="exportRecords.slice((currentPage - 1) * pageSize, currentPage * pageSize)"
+                        style="width: 100%">
+                        <el-table-column prop="id" label="ID" width="80" />
+                        <el-table-column prop="station" label="站点" width="180" />
+                        <el-table-column prop="model" label="设备类型" width="180" />
+                        <el-table-column prop="dateRange" label="数据时间范围" width="300" />
+                        <el-table-column prop="status" label="状态" width="120">
+                            <template #default="{ row }">
+                                <el-tag
+                                    :type="row.status === 'completed' ? 'success' : row.status === 'processing' ? 'warning' : 'info'">
+                                    {{ row.statusText }}
+                                </el-tag>
+                            </template>
+                        </el-table-column>
+                        <el-table-column prop="createTime" label="创建时间" width="180" />
+                        <el-table-column prop="expireTime" label="过期时间" width="180" />
+                        <el-table-column label="操作" fixed="right" width="120">
+                            <template #default="{ row }">
+                                <el-button v-if="row.status === 'completed'" type="primary" link
+                                    @click="downloadFile(row)">
+                                    <el-icon>
+                                        <Download />
+                                    </el-icon>
+                                    下载
+                                </el-button>
+                                <el-button v-if="row.status === 'completed'" type="danger" link
+                                    @click="deleteRecord(row)">
+                                    <el-icon>
+                                        <Delete />
+                                    </el-icon>
+                                    删除
+                                </el-button>
+                            </template>
+                        </el-table-column>
+                    </el-table>
+                    <div class="flex justify-end mt-4">
+                        <el-pagination v-model:current-page="currentPage" v-model:page-size="pageSize"
+                            :total="exportRecords.length" :page-sizes="[10, 20, 30, 50]"
+                            layout="total, sizes, prev, pager, next, jumper" @size-change="handleSizeChange"
+                            @current-change="handleCurrentChange" />
+                    </div>
+                </div>
+            </div>
+</template>
+<script lang="ts" setup>
+//批量导出
+import { ref, onMounted, watch } from 'vue';
+import * as echarts from 'echarts';
+import { ElMessage } from 'element-plus';
+import { Monitor, DataLine, Setting, Lock, Connection, Tools, Fold, Expand, HomeFilled, Timer, Warning, TrendCharts, Odometer, DocumentDelete, Download, Edit, Refresh, Delete, Position, Collection, Link, Goods, SetUp, FolderOpened, Share, Management, Key, User, UserFilled, CircleCheck, Notebook, Guide, Bell, Document, Service, Platform } from '@element-plus/icons-vue';
+
+const selectedArea = ref('');
+const selectedStation = ref('');
+const selectedModel = ref('');
+const dateRange = ref([]);
+const areas = [
+    { id: 'AR001', name: '东区' },
+    { id: 'AR002', name: '西区' },
+    { id: 'AR003', name: '科学城' },
+    { id: 'AR004', name: '萝岗' }
+];
+// 模拟数据
+const stations = [
+    { id: 'ST001', name: '南燕楼_21136_230' },
+    { id: 'ST002', name: '南燕楼_20036_210' },
+    { id: 'ST003', name: '百事高厂房01' }
+];
+const deviceModels = [
+    { id: 'DM001', name: '居民水表' },
+    { id: 'DM002', name: '非居民水表' },
+    { id: 'DM003', name: '消火栓' },
+    { id: 'DM004', name: '智能井盖' }
+];
+const currentPage = ref(1);
+const pageSize = ref(10);
+const exportRecords = ref([
+    {
+        id: 'EXP001',
+        station: '南燕楼_21136_230',
+        model: '居民水表',
+        dateRange: '2024-01-01 至 2024-01-07',
+        status: 'completed',
+        statusText: '已完成',
+        createTime: '2024-01-08 10:30:00',
+        expireTime: '2024-01-15 10:30:00'
+    },
+    {
+        id: 'EXP002',
+        station: '百事高厂房01',
+        model: '非居民水表',
+        dateRange: '2024-01-05 至 2024-01-12',
+        status: 'processing',
+        statusText: '处理中',
+        createTime: '2024-01-12 15:20:00',
+        expireTime: '2024-01-19 15:20:00'
+    }
+]);
+const handleSizeChange = (val: number) => {
+    pageSize.value = val;
+};
+const handleCurrentChange = (val: number) => {
+    currentPage.value = val;
+};
+const generateExport = () => {
+    if (!selectedArea.value || !selectedStation.value || !selectedModel.value || !dateRange.value.length) {
+        ElMessage.warning('请选择完整的查询条件');
+        return;
+    }
+    const newRecord = {
+        id: `EXP${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`,
+        station: stations.find(s => s.id === selectedStation.value)?.name,
+        model: deviceModels.find(m => m.id === selectedModel.value)?.name,
+        dateRange: `${dateRange.value[0].toLocaleDateString()} 至 ${dateRange.value[1].toLocaleDateString()}`,
+        status: 'processing',
+        statusText: '处理中',
+        createTime: new Date().toLocaleString(),
+        expireTime: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleString()
+    };
+    exportRecords.value.unshift(newRecord);
+    // 模拟异步处理
+    setTimeout(() => {
+        const record = exportRecords.value.find(r => r.id === newRecord.id);
+        if (record) {
+            record.status = 'completed';
+            record.statusText = '已完成';
+        }
+    }, 3000);
+    ElMessage.success('导出任务已创建，请稍后查看进度');
+};
+const downloadFile = (row) => {
+    ElMessage.success(`开始下载文件：${row.id}`);
+};
+const deleteRecord = (row) => {
+    exportRecords.value = exportRecords.value.filter(r => r.id !== row.id);
+    ElMessage.success('记录已删除');
+};
+</script>
+<style module>
+</style>

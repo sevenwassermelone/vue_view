@@ -1,0 +1,336 @@
+<template>
+	<!-- 搜索和操作区域 -->
+	<div class="bg-white p-4 rounded-lg shadow-sm mb-6">
+	<div class="flex items-center justify-between mb-4">
+	<div class="flex items-center space-x-4">
+	<el-input
+	placeholder="请输入分组名称"
+	class="w-64">
+	<template #prefix>
+	<el-icon><Search /></el-icon>
+	</template>
+	</el-input>
+	<el-select v-model="departmentFilter" placeholder="所属部门" class="w-48">
+	<el-option label="全部部门" value="" />
+	<el-option label="管网管理组" value="network" />
+	<el-option label="水质管理组" value="quality" />
+	<el-option label="设备维护组" value="equipment" />
+	<el-option label="抢修维护组" value="repairs" />
+	</el-select>
+	<el-select v-model="statusFilter" placeholder="分组状态" class="w-32">
+	<el-option label="全部状态" value="" />
+	<el-option label="启用" value="enabled" />
+	<el-option label="禁用" value="disabled" />
+	</el-select>
+	</div>
+	<div class="flex items-center space-x-4">
+	<el-button type="primary" class="!rounded-button" @click="dialogVisible = true">
+	<el-icon class="mr-1"><Plus /></el-icon>
+	添加分组
+	</el-button>
+	<el-button type="success" class="!rounded-button">
+	<el-icon class="mr-1"><Download /></el-icon>
+	导出分组
+	</el-button>
+	</div>
+	</div>
+	</div>
+	<!-- 分组列表 -->
+	<div class="bg-white rounded-lg shadow-sm">
+	<el-table :data="groupList" style="width: 100%">
+	<el-table-column type="expand">
+	<template #default="props">
+	<div class="p-4">
+	<p class="mb-2"><span class="font-medium">分组描述：</span>{{ props.row.description }}</p>
+	<p><span class="font-medium">创建时间：</span>{{ props.row.createTime }}</p>
+	</div>
+	</template>
+	</el-table-column>
+	<el-table-column prop="name" label="分组名称" min-width="180"/>
+	<el-table-column prop="deviceCount" label="设备数量" width="120"/>
+	<el-table-column prop="manager" label="负责人" width="120"/>
+	<el-table-column prop="department" label="所属部门" min-width="160"/>
+	<el-table-column prop="status" label="状态" width="100">
+	<template #default="scope">
+	<el-tag :type="scope.row.status ? 'success' : 'info'">
+	{{ scope.row.status ? '启用' : '禁用' }}
+	</el-tag>
+	</template>
+	</el-table-column>
+	<el-table-column label="操作" width="320" fixed="right">
+	<template #default="scope">
+	<el-button text type="primary" size="small" class="!rounded-button">
+	<el-icon class="mr-1"><View /></el-icon>
+	查看设备
+	</el-button>
+	<el-button text type="success" size="small" class="!rounded-button">
+	<el-icon class="mr-1"><Plus /></el-icon>
+	添加设备
+	</el-button>
+	<el-button text type="primary" size="small" class="!rounded-button">
+	<el-icon class="mr-1"><Edit /></el-icon>
+	编辑
+	</el-button>
+	<el-button text type="danger" size="small" class="!rounded-button">
+	<el-icon class="mr-1"><Delete /></el-icon>
+	删除
+	</el-button>
+	</template>
+	</el-table-column>
+	</el-table>
+	<div class="flex justify-end p-4">
+	<el-pagination
+	:total="50"
+	:page-size="10"
+	:current-page="1"
+	background
+	layout="prev, pager, next" />
+	</div>
+	</div>
+	<!-- 添加分组对话框 -->
+	<el-dialog
+	v-model="dialogVisible"
+	title="添加分组"
+	width="500px">
+	<el-form :model="form" label-width="100px">
+	<el-form-item label="分组名称">
+	<el-input v-model="form.name" placeholder="请输入分组名称" />
+	</el-form-item>
+	<el-form-item label="所属部门">
+	<el-cascader
+	v-model="form.department"
+	:options="departmentOptions"
+	placeholder="请选择所属部门"
+	class="w-full" />
+	</el-form-item>
+	<el-form-item label="负责人">
+	<el-input v-model="form.manager" placeholder="请输入负责人姓名" />
+	</el-form-item>
+	<el-form-item label="状态">
+	<el-switch v-model="form.status" />
+	</el-form-item>
+	<el-form-item label="描述">
+	<el-input
+	v-model="form.description"
+	type="textarea"
+	placeholder="请输入分组描述"
+	rows="3" />
+	</el-form-item>
+	</el-form>
+	<template #footer>
+	<span class="dialog-footer">
+	<el-button @click="dialogVisible = false" class="!rounded-button">取消</el-button>
+	<el-button type="primary" @click="handleSubmit" class="!rounded-button">确定</el-button>
+	</span>
+	</template>
+	</el-dialog>
+</template>
+
+<script lang="ts" setup>
+import { ref } from 'vue';
+import { Bell, Monitor, DataLine, Operation, Connection, Lock, Setting, Search, Plus, Edit, Link, Delete, Download, View } from '@element-plus/icons-vue';
+
+const dialogVisible = ref(false);
+const form = ref({
+name: '',
+department: [],
+manager: '',
+status: true,
+description: ''
+});
+
+const departmentOptions = [
+  {
+    value: 'operations',
+    label: '运营管理部',
+    children: [
+      { value: 'network', label: '管网管理组' },
+      { value: 'quality', label: '水质管理组' }
+    ]
+  },
+  {
+    value: 'maintenance',
+    label: '维护管理部',
+    children: [
+      { value: 'equipment', label: '设备维护组' },
+      { value: 'repairs', label: '抢修维护组' }
+    ]
+  }
+];
+
+const groupList = ref([
+  {
+    name: '东区管网监测组',
+    deviceCount: 156,
+    manager: '张志明',
+    department: '管网管理组',
+    status: true,
+    description: '负责东区供水管网的压力、流量监测设备管理',
+    createTime: '2024-01-10 09:30:00'
+  },
+  {
+    name: '水质在线监测组',
+    deviceCount: 89,
+    manager: '李晓芳',
+    department: '水质管理组',
+    status: true,
+    description: '负责水厂及管网重要节点水质在线监测设备管理',
+    createTime: '2024-01-11 14:20:00'
+  },
+  {
+    name: '智能水表管理组',
+    deviceCount: 2453,
+    manager: '王建国',
+    department: '设备维护组',
+    status: true,
+    description: '负责居民区智能水表设备管理与维护',
+    createTime: '2024-01-12 11:15:00'
+  },
+  {
+    name: '工业区监测组',
+    deviceCount: 178,
+    manager: '陈思远',
+    department: '管网管理组',
+    status: false,
+    description: '负责工业园区供水设施监测设备管理',
+    createTime: '2024-01-13 16:40:00'
+  }
+]);
+const deviceDialogVisible = ref(false);
+const selectedDevices = ref<string[]>([]);
+const departmentFilter = ref('');
+const statusFilter = ref('');
+const deviceList = ref([
+{
+deviceId: 'D202401150001',
+name: 'PM2020型压力传感器',
+type: '压力监测',
+location: '西区管网节点A',
+lastOnline: '2024-01-15 14:30',
+status: '在线'
+},
+{
+deviceId: 'D202401150002',
+name: 'TDS1080水质分析仪',
+type: '水质监测',
+location: '东区水厂出水口',
+lastOnline: '2024-01-15 14:25',
+status: '在线'
+},
+{
+deviceId: 'D202401150003',
+name: 'FL5090流量计',
+type: '流量监测',
+location: '南区供水干管',
+lastOnline: '2024-01-14 23:45',
+status: '离线'
+},
+{
+deviceId: 'D202401150004',
+name: 'WQ3030余氯分析仪',
+type: '水质监测',
+location: '北区加压站',
+lastOnline: '2024-01-15 14:28',
+status: '在线'
+},
+{
+deviceId: 'D202401150005',
+name: 'PH2088酸碱度检测仪',
+type: '水质监测',
+location: '中心水厂',
+lastOnline: '2024-01-15 13:15',
+status: '故障'
+},
+{
+deviceId: 'D202401150006',
+name: 'NB-IoT智能水表 #12853',
+type: '智能水表',
+location: '锦绣花园3栋1单元',
+lastOnline: '2024-01-15 14:20',
+status: '在线'
+},
+{
+deviceId: 'D202401150007',
+name: 'LoRa压力监测终端 #526',
+type: '压力监测',
+location: '东湖路泵站',
+lastOnline: '2024-01-15 14:15',
+status: '在线'
+}
+]);
+const handleDeviceSelect = (selection: any[]) => {
+selectedDevices.value = selection.map(item => item.id);
+};
+const handleDeviceBind = () => {
+// 这里添加设备绑定逻辑
+deviceDialogVisible.value = false;
+selectedDevices.value = [];
+};
+const handleSubmit = () => {
+// 这里添加表单提交逻辑
+dialogVisible.value = false;
+// 重置表单
+form.value = {
+name: '',
+type: '',
+ip: '',
+port: '',
+query: false,
+timeSync: false,
+enabled: true
+};
+};
+const productList = ref([
+{
+name: 'NB-IoT智能水表',
+category: '智能水表',
+deviceCount: 1280,
+model: '标准',
+auth: '密钥认证',
+status: true,
+createTime: '2024-01-15 14:30:22'
+},
+{
+name: 'LoRa智能压力监测终端',
+category: '压力监测',
+deviceCount: 526,
+model: '自定义',
+auth: '证书认证',
+status: true,
+createTime: '2024-01-14 09:15:33'
+},
+{
+name: '多参数水质在线监测仪',
+category: '水质监测',
+deviceCount: 168,
+model: '标准',
+auth: '密钥认证',
+status: true,
+createTime: '2024-01-13 16:45:12'
+},
+{
+name: '超声波流量计',
+category: '流量监测',
+deviceCount: 342,
+model: '标准',
+auth: '密钥认证',
+status: false,
+createTime: '2024-01-12 11:20:45'
+},
+{
+name: '智能远传水表',
+category: '智能水表',
+deviceCount: 2156,
+model: '标准',
+auth: '密钥认证',
+status: true,
+createTime: '2024-01-11 15:55:18'
+}
+]);
+// 删除未使用的函数
+</script>
+<style scoped>
+.el-menu {
+border-right: none;
+}
+</style>

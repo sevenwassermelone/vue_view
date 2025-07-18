@@ -1,0 +1,684 @@
+<template>
+    <div class="flex"> 
+        <div class="w-80 bg-white rounded-lg shadow-sm mr-6 flex-shrink-0 h-fit">
+                <el-tree :data="treeData" :props="defaultProps" node-key="id"
+                    :default-expanded-keys="['1', '1-1', '2', '3']" @node-click="handleNodeClick">
+                    <template #default="{ node, data }">
+                        <div class="flex items-center">
+                            <el-icon v-if="data.type === 'water'" class="mr-2 text-blue-500">
+                                <Odometer />
+                            </el-icon>
+                            <el-icon v-else-if="data.type === 'hydrant'" class="mr-2 text-red-500">
+                                <Warning />
+                            </el-icon>
+                            <el-icon v-else-if="data.type === 'pump'" class="mr-2 text-green-500">
+                                <SetUp />
+                            </el-icon>
+                            <el-icon v-else class="mr-2 text-gray-400">
+                                <FolderOpened />
+                            </el-icon>
+                            <span>{{ node.label }}</span>
+                            <span v-if="data.count" class="ml-2 text-xs text-gray-400">({{ data.count }})</span>
+                        </div>
+                    </template>
+                </el-tree>
+        </div>
+        <div class="flex-1">
+            <!-- 搜索过滤栏 -->
+            <div class="bg-white p-6 rounded-lg shadow-sm mb-6">
+                <div class="flex items-center space-x-6">
+                    <el-input v-model="searchQuery" placeholder="搜索设备名称/编号" class="w-48">
+                        <template #prefix>
+                            <el-icon>
+                                <Search />
+                            </el-icon>
+                        </template>
+                    </el-input>
+                    <el-select v-model="deviceType" placeholder="设备类型" class="w-40">
+                        <el-option label="全部类型" value="" />
+                        <el-option label="水质监测" value="water_quality" />
+                        <el-option label="流量计" value="flow_meter" />
+                        <el-option label="压力表" value="pressure_meter" />
+                        <el-option label="水位计" value="level_meter" />
+                        <el-option label="消火栓" value="hydrant" />
+                    </el-select>
+                    <el-select v-model="deviceStatus" placeholder="设备状态" class="w-40">
+                        <el-option label="全部状态" value="" />
+                        <el-option label="在线" value="online" />
+                        <el-option label="离线" value="offline" />
+                        <el-option label="故障" value="fault" />
+                    </el-select>
+                    <el-button type="primary" class="!rounded-button whitespace-nowrap">
+                        <el-icon class="mr-1">
+                            <Search />
+                        </el-icon>
+                        查询
+                    </el-button>
+                    <el-button type="success" class="!rounded-button whitespace-nowrap">
+                        <el-icon class="mr-1">
+                            <Download />
+                        </el-icon>
+                        导出数据
+                    </el-button>
+                    <div class="flex-1 flex justify-end">
+                        <el-button-group>
+                            <el-button type="primary" :class="{'!bg-blue-600': viewMode === 'list'}"
+                                class="!rounded-none whitespace-nowrap" @click="viewMode = 'list'">
+                                <el-icon class="mr-1">
+                                    <List />
+                                </el-icon>
+                                列表
+                            </el-button>
+                            <el-button type="primary" :class="{'!bg-blue-600': viewMode === 'map'}"
+                                class="!rounded-none whitespace-nowrap" @click="viewMode = 'map'">
+                                <el-icon class="mr-1">
+                                    <Position />
+                                </el-icon>
+                                地图
+                            </el-button>
+                        </el-button-group>
+                    </div>
+                </div>
+            </div>
+            <!-- 设备列表 -->
+            <div v-if="viewMode === 'list'" class="bg-white rounded-lg shadow-sm">
+                <el-table v-if="viewtype ==='sb'" :data="deviceList" style="width: 100%">
+                    <el-table-column prop="meterNo" label="表号" min-width="120" />
+                    <!-- <el-table-column prop="factoryNo" label="出厂编号" min-width="120" /> -->
+                    <el-table-column prop="address" label="安装地址" min-width="200" />
+                    <el-table-column prop="fileNo" label="档案号" min-width="120" />
+                    <el-table-column prop="waterUsage" label="用水量" min-width="100" />
+                    <el-table-column prop="lastReadTime" label="最后一次抄表时间" min-width="180" />
+                    <el-table-column prop="status" label="在线状态" width="100">
+                        <template #default="{ row }">
+                            <el-tag
+                                :type="row.status === '在线' ? 'success' : row.status === '离线' ? 'info' : 'danger'">
+                                {{ row.status }}
+                            </el-tag>
+                        </template>
+                    </el-table-column>
+                    <!-- <el-table-column prop="flow" label="流量" min-width="100" />
+                    <el-table-column prop="pressure" label="压力" min-width="100" /> -->
+                    <el-table-column prop="totalFlow" label="累计流量" min-width="120" />
+                    <el-table-column label="操作" width="180" fixed="right">
+                        <template #default>
+                            <div class="space-x-2">
+                                <el-button type="primary" class="!rounded-button whitespace-nowrap">
+                                    <el-icon>
+                                        <View />
+                                    </el-icon>
+                                </el-button>
+                                <el-button type="warning" class="!rounded-button whitespace-nowrap">
+                                    <el-icon>
+                                        <Setting />
+                                    </el-icon>
+                                </el-button>
+                                <el-button type="success" class="!rounded-button whitespace-nowrap">
+                                    <el-icon>
+                                        <DataLine />
+                                    </el-icon>
+                                </el-button>
+                            </div>
+                        </template>
+                    </el-table-column>
+                </el-table>
+                <el-table  v-if="viewtype ==='xhs'" :data="xhsdeviceList" style="width: 100%">
+                    <el-table-column prop="deviceNo" label="设备编号" min-width="120" />
+                        <el-table-column prop="deviceName" label="设备名称" min-width="120" />
+                        <el-table-column prop="deviceStatus" label="设备状态" min-width="100">
+                            <template #default="{ row }">
+                                <el-tag
+                                    :type="row.deviceStatus === '正常' ? 'success' : row.deviceStatus === '故障' ? 'danger' : 'warning'">
+                                    {{ row.deviceStatus }}
+                                </el-tag>
+                            </template>
+                        </el-table-column>
+                        <el-table-column prop="connectionStatus" label="连接状态" min-width="100">
+                            <template #default="{ row }">
+                                <el-tag :type="row.connectionStatus === '在线' ? 'success' : 'info'">
+                                    {{ row.connectionStatus }}
+                                </el-tag>
+                            </template>
+                        </el-table-column>
+                        <el-table-column prop="pressure" label="压力" min-width="100" />
+                        <el-table-column prop="batteryVoltage" label="电池电压" min-width="100" />
+                        <el-table-column prop="signalStrength" label="信号强度" min-width="100" />
+                        <el-table-column prop="collectionTime" label="采集时间" min-width="180" />
+                        <el-table-column label="操作" width="180" fixed="right">
+                            <template #default>
+                                <div class="space-x-2">
+                                    <el-button type="primary" class="!rounded-button whitespace-nowrap">
+                                        <el-icon>
+                                            <View />
+                                        </el-icon>
+                                    </el-button>
+                                    <el-button type="warning" class="!rounded-button whitespace-nowrap">
+                                        <el-icon>
+                                            <Setting />
+                                        </el-icon>
+                                    </el-button>
+                                    <el-button type="success" class="!rounded-button whitespace-nowrap">
+                                        <el-icon>
+                                            <DataLine />
+                                        </el-icon>
+                                    </el-button>
+                                </div>
+                            </template>
+                        </el-table-column>
+                </el-table>
+            </div>
+            
+            <div v-else class="bg-white rounded-lg shadow-sm p-6">
+                <div class="relative">
+                    <img :src="currentMapUrl" alt="Water Infrastructure Map"
+                        class="w-full h-[700px] object-cover rounded-lg" />
+                    <div class="absolute right-4 bottom-4">
+                        <el-button-group>
+                            <el-button type="primary" :class="{'!bg-blue-600': mapType === 'vector'}"
+                                class="!rounded-none whitespace-nowrap" @click="switchMapType('vector')">
+                                电子地图
+                            </el-button>
+                            <el-button type="primary" :class="{'!bg-blue-600': mapType === 'satellite'}"
+                                class="!rounded-none whitespace-nowrap" @click="switchMapType('satellite')">
+                                遥感影像
+                            </el-button>
+                        </el-button-group>
+                    </div>
+                    <div class="absolute left-4 bottom-4 bg-white/90 backdrop-blur-sm p-4 rounded-lg shadow-lg">
+                        <h4 class="text-gray-700 font-medium mb-3">图例说明</h4>
+                        <div class="space-y-2">
+                            <div class="flex items-center">
+                                <div class="w-4 h-4 rounded-full bg-green-500 mr-2"></div>
+                                <span class="text-sm text-gray-600">在线设备</span>
+                                <span class="text-xs text-gray-500 ml-2">(38)</span>
+                            </div>
+                            <div class="flex items-center">
+                                <div class="w-4 h-4 rounded-full bg-gray-400 mr-2"></div>
+                                <span class="text-sm text-gray-600">离线设备</span>
+                                <span class="text-xs text-gray-500 ml-2">(5)</span>
+                            </div>
+                            <div class="flex items-center">
+                                <div class="w-4 h-4 rounded-full bg-red-500 mr-2"></div>
+                                <span class="text-sm text-gray-600">故障设备</span>
+                                <span class="text-xs text-gray-500 ml-2">(2)</span>
+                            </div>
+                            <div class="flex items-center">
+                                <div class="w-4 h-4 rounded bg-blue-500 mr-2"></div>
+                                <span class="text-sm text-gray-600">主要管网</span>
+                            </div>
+                            <div class="flex items-center">
+                                <div class="w-4 h-4 rounded bg-blue-300 mr-2"></div>
+                                <span class="text-sm text-gray-600">次要管网</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- 分页器 -->
+            <div class="flex justify-center mt-6">
+                <el-pagination v-model:current-page="currentPage" v-model:page-size="pageSize"
+                    :page-sizes="[9, 18, 36, 72]" :total="total" layout="总数, 行数, 前一页, 页, 后一页" />
+            </div>
+        </div>
+    </div>
+   
+            
+</template>
+  
+<script lang="ts" setup>
+  import { ref, onMounted, watch, nextTick, computed } from 'vue';
+    const treeData = [
+        {
+            id: '1',
+            label: '居民水表',
+            type: 'water',
+            children: [
+                {
+                    id: '1-1',
+                    label: '东区',
+                    children: [
+                        {
+                            id: '1-1-1',
+                            label: '东城雅苑',
+                            count: 126,
+                            type: 'water'
+                        },
+                        {
+                            id: '1-1-2',
+                            label: '宏康二期',
+                            count: 84,
+                            type: 'water'
+                        },
+                        {
+                            id: '1-1-3',
+                            label: '宏康三期',
+                            count: 92,
+                            type: 'water'
+                        }
+                    ]
+                },
+                {
+                    id: '1-2',
+                    label: '九龙',
+                    count: 156,
+                    type: 'water'
+                },
+                {
+                    id: '1-3',
+                    label: '九龙镇',
+                    count: 98,
+                    type: 'water'
+                },
+                {
+                    id: '1-4',
+                    label: '西区',
+                    count: 178,
+                    type: 'water'
+                }
+            ]
+        },
+        {
+            id: '1',
+            label: '非居民水表',
+            type: 'water',
+            children: [
+                {
+                    id: '1-1',
+                    label: '东区',
+                    children: [
+                        {
+                            id: '1-1-1',
+                            label: '一区',
+                            count: 91,
+                            type: 'water'
+                        },
+                        {
+                            id: '1-1-2',
+                            label: '二区',
+                            count: 84,
+                            type: 'water'
+                        },
+                        {
+                            id: '1-1-3',
+                            label: '三区',
+                            count: 183,
+                            type: 'water'
+                        }
+                    ]
+                },
+                {
+                    id: '1-2',
+                    label: '九龙',
+                    count: 156,
+                    type: 'water'
+                },
+                {
+                    id: '1-3',
+                    label: '九龙镇',
+                    count: 98,
+                    type: 'water'
+                },
+                {
+                    id: '1-4',
+                    label: '西区',
+                    count: 178,
+                    type: 'water'
+                }
+            ]
+        },
+        {
+            id: '2',
+            label: '消火栓',
+            type: 'hydrant',
+            children: [
+                {
+                    id: '2-1',
+                    label: '东区',
+                    count: 45,
+                    type: 'hydrant'
+                },
+                {
+                    id: '2-2',
+                    label: '九龙',
+                    count: 38,
+                    type: 'hydrant'
+                },
+                {
+                    id: '2-3',
+                    label: '九龙镇',
+                    count: 26,
+                    type: 'hydrant'
+                },
+                {
+                    id: '2-4',
+                    label: '西区',
+                    count: 42,
+                    type: 'hydrant'
+                }
+            ]
+        },
+        {
+            id: '3',
+            label: '二供/加压站',
+            type: 'pump',
+            children: [
+                {
+                    id: '3-1',
+                    label: '东区',
+                    count: 8,
+                    type: 'pump'
+                },
+                {
+                    id: '3-2',
+                    label: '九龙',
+                    count: 6,
+                    type: 'pump'
+                },
+                {
+                    id: '3-3',
+                    label: '九龙镇',
+                    count: 4,
+                    type: 'pump'
+                },
+                {
+                    id: '3-4',
+                    label: '西区',
+                    count: 7,
+                    type: 'pump'
+                }
+            ]
+        }
+    ];
+    const defaultProps = {
+        children: 'children',
+        label: 'label'
+    };
+    const handleNodeClick = (data: any) => {
+        if(data.label=='水表'){
+            viewtype = 'sb';
+        }
+        if(data.label=='消火栓'){
+            viewtype = 'xhs';
+        }
+        if(data.label=='二供/加压站'){
+            viewtype = 'jyz';
+        }
+    };
+    import { Monitor, DataLine, Setting, Lock, Connection, Tools, Fold, Expand, HomeFilled, Timer, Warning, TrendCharts, Odometer, DocumentDelete, Download, Edit, Refresh, Delete, Position, Collection, Link, Goods, SetUp, FolderOpened, Share, Management, Key, User, UserFilled, CircleCheck, Notebook, Guide, Bell, Document, Service, Search, View, List } from '@element-plus/icons-vue';
+  // 这里可以添加组件逻辑
+  const activeMenu = ref('1-2');
+  const searchQuery = ref('');
+    const deviceType = ref('');
+    const deviceStatus = ref('');
+    const viewMode = ref('list');
+    var viewtype = ref('sb');
+    const currentPage = ref(1);
+    const pageSize = ref(9);
+    const total = ref(100);
+    const deviceList = ref([
+        {
+            id: 1,
+            meterNo: 'WM2401001',
+            factoryNo: 'F20230501001',
+            address: '东城雅苑1栋1单元101室',
+            fileNo: '02170101001',
+            waterUsage: '2 m³',
+            lastReadTime: '2025-02-27 00:00:22',
+            status: '在线',
+            flow: '0.8 m³/h',
+            pressure: '0.42 MPa',
+            totalFlow: '1856.3 m³'
+        },
+        {
+            id: 2,
+            meterNo: 'WM2401002',
+            factoryNo: 'F20230501002',
+            address: '东城雅苑1栋2单元202室',
+            fileNo: '02170101002',
+            waterUsage: '4m³',
+            lastReadTime: '2025-02-27 00:00:18',
+            status: '在线',
+            flow: '0.6 m³/h',
+            pressure: '0.40 MPa',
+            totalFlow: '1458.9 m³'
+        },
+        {
+            id: 3,
+            meterNo: 'WM2401003',
+            factoryNo: 'F20230501003',
+            address: '东城雅苑2栋1单元301室',
+            fileNo: '02170101003',
+            waterUsage: '2m³',
+            lastReadTime: '2025-02-27 00:00:45',
+            status: '离线',
+            flow: '0.0 m³/h',
+            pressure: '0.00 MPa',
+            totalFlow: '2156.8 m³'
+        },
+        {
+            id: 4,
+            meterNo: 'WM2401004',
+            factoryNo: 'F20230501004',
+            address: '东城雅苑2栋2单元402室',
+            fileNo: '02170101004',
+            waterUsage: '2m³',
+            lastReadTime: '2025-02-27 00:00:15',
+            status: '在线',
+            flow: '0.7 m³/h',
+            pressure: '0.41 MPa',
+            totalFlow: '1678.5 m³'
+        },
+        {
+            id: 5,
+            meterNo: 'WM2401005',
+            factoryNo: 'F20230501005',
+            address: '东城雅苑3栋1单元501室',
+            fileNo: '02170101005',
+            waterUsage: '3 m³',
+            lastReadTime: '2025-02-27 00:00:30',
+            status: '故障',
+            flow: '错误',
+            pressure: '错误',
+            totalFlow: '1245.6 m³'
+        },
+        {
+            id: 6,
+            meterNo: 'WM2401006',
+            factoryNo: 'F20230501006',
+            address: '东城雅苑3栋2单元602室',
+            fileNo: '02170101006',
+            waterUsage: '2 m³',
+            lastReadTime: '2025-02-27 00:00:20',
+            status: '在线',
+            flow: '0.9 m³/h',
+            pressure: '0.43 MPa',
+            totalFlow: '1956.2 m³'
+        },
+        {
+            id: 7,
+            meterNo: 'WM2401007',
+            factoryNo: 'F20230501007',
+            address: '东城雅苑4栋1单元701室',
+            fileNo: '02170101007',
+            waterUsage: '3 m³',
+            lastReadTime: '2025-02-27 00:00:12',
+            status: '在线',
+            flow: '0.5 m³/h',
+            pressure: '0.39 MPa',
+            totalFlow: '1156.4 m³'
+        },
+        {
+            id: 8,
+            meterNo: 'WM2401008',
+            factoryNo: 'F20230501008',
+            address: '东城雅苑4栋2单元802室',
+            fileNo: '02170101008',
+            waterUsage: '2 m³',
+            lastReadTime: '2025-02-27 00:00:08',
+            status: '在线',
+            flow: '0.8 m³/h',
+            pressure: '0.42 MPa',
+            totalFlow: '1845.7 m³'
+        },
+        {
+            id: 9,
+            meterNo: 'WM2401009',
+            factoryNo: 'F20230501009',
+            address: '东城雅苑5栋1单元901室',
+            fileNo: '02170101009',
+            waterUsage: '3m³',
+            lastReadTime: '2025-02-27 00:00:05',
+            status: '在线',
+            flow: '1.1 m³/h',
+            pressure: '0.44 MPa',
+            totalFlow: '2234.8 m³'
+        }
+    ]);
+    const xhsdeviceList = ref([
+        {
+            id: 1,
+            deviceNo: 'H2401001',
+            deviceName: '东城路消火栓001',
+            deviceStatus: '正常',
+            connectionStatus: '在线',
+            pressure: '0.42 MPa',
+            batteryVoltage: '3.6V',
+            signalStrength: '-75dBm',
+            collectionTime: '2025-02-27 00:00:22'
+        },
+        {
+            id: 2,
+            deviceNo: 'H2401002',
+            deviceName: '东城路消火栓002',
+            deviceStatus: '正常',
+            connectionStatus: '在线',
+            pressure: '0.40 MPa',
+            batteryVoltage: '3.5V',
+            signalStrength: '-72dBm',
+            collectionTime: '2025-02-27 00:00:18'
+        },
+        {
+            id: 3,
+            deviceNo: 'H2401003',
+            deviceName: '东城路消火栓003',
+            deviceStatus: '低压',
+            connectionStatus: '离线',
+            pressure: '0.25 MPa',
+            batteryVoltage: '3.2V',
+            signalStrength: '-85dBm',
+            collectionTime: '2025-02-27 00:00:45'
+        },
+        {
+            id: 4,
+            deviceNo: 'H2401004',
+            deviceName: '东城路消火栓004',
+            deviceStatus: '正常',
+            connectionStatus: '在线',
+            pressure: '0.41 MPa',
+            batteryVoltage: '3.7V',
+            signalStrength: '-68dBm',
+            collectionTime: '2025-02-27 00:00:15'
+        },
+        {
+            id: 5,
+            deviceNo: 'H2401005',
+            deviceName: '东城路消火栓005',
+            deviceStatus: '故障',
+            connectionStatus: '离线',
+            pressure: '0.00 MPa',
+            batteryVoltage: '2.8V',
+            signalStrength: '-92dBm',
+            collectionTime: '2025-02-27 00:00:30'
+        },
+        {
+            id: 6,
+            deviceNo: 'H2401006',
+            deviceName: '东城路消火栓006',
+            deviceStatus: '正常',
+            connectionStatus: '在线',
+            pressure: '0.43 MPa',
+            batteryVoltage: '3.6V',
+            signalStrength: '-70dBm',
+            collectionTime: '2025-02-27 00:00:20'
+        },
+        {
+            id: 7,
+            deviceNo: 'H2401007',
+            deviceName: '东城路消火栓007',
+            deviceStatus: '正常',
+            connectionStatus: '在线',
+            pressure: '0.39 MPa',
+            batteryVoltage: '3.5V',
+            signalStrength: '-73dBm',
+            collectionTime: '2025-02-27 00:00:12'
+        },
+        {
+            id: 8,
+            deviceNo: 'H2401008',
+            deviceName: '东城路消火栓008',
+            deviceStatus: '正常',
+            connectionStatus: '在线',
+            pressure: '0.42 MPa',
+            batteryVoltage: '3.6V',
+            signalStrength: '-71dBm',
+            collectionTime: '2025-02-27 00:00:08'
+        },
+        {
+            id: 9,
+            deviceNo: 'H2401009',
+            deviceName: '东城路消火栓009',
+            deviceStatus: '正常',
+            connectionStatus: '在线',
+            pressure: '0.44 MPa',
+            batteryVoltage: '3.7V',
+            signalStrength: '-69dBm',
+            collectionTime: '2025-02-27 00:00:05'
+        }
+    ]);
+    const mapType = ref('vector');
+    // http://localhost:5173/img/logo.png
+    // const vectorMapUrl = 'https://ai-public.mastergo.com/ai/img_res/0a867d6b338b2f71f36e847363d80e4f.jpg';
+    // const satelliteMapUrl = 'https://ai-public.mastergo.com/ai/img_res/513b6c378c85afd0ded3e6ac6d035c88.jpg';
+    const vectorMapUrl = 'http://192.168.120.103:5173/img/矢量图.png';
+    const satelliteMapUrl = 'http://192.168.120.103:5173/img/遥感图.png';
+    const currentMapUrl = computed(() => mapType.value === 'vector' ? vectorMapUrl : satelliteMapUrl);
+    const switchMapType = (type: 'vector' | 'satellite') => {
+        mapType.value = type;
+    };
+
+  </script>
+  
+  <style scoped>
+  /* 这里可以添加组件样式 */
+  :deep(.el-tree) {
+        padding: 1rem;
+    }
+
+    :deep(.el-tree-node__content) {
+        height: 32px;
+    }
+
+    .el-menu {
+        border-right: none;
+    }
+
+    :deep(.el-menu-item.is-active) {
+        background-color: #e6f4ff;
+        color: #1890ff;
+    }
+
+    :deep(.el-table .cell) {
+        white-space: nowrap;
+    }
+
+    :deep(.el-date-editor.el-input) {
+        width: 240px;
+    }
+
+    /* 去除number类型input的箭头 */
+    input[type="number"]::-webkit-inner-spin-button,
+    input[type="number"]::-webkit-outer-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+    }
+  </style>

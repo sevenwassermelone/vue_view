@@ -1,0 +1,147 @@
+<template>
+    <div class="min-h-screen bg-gray-50">
+        <!-- 顶部导航 -->
+        <header class="h-16 bg-[#1e88e5] shadow-sm fixed w-full top-0 z-50 flex items-center justify-between px-6">
+            <div class="flex items-center">
+                <el-icon class="text-xl cursor-pointer text-white/90 hover:text-white mr-3"
+                    @click="isCollapse = !isCollapse">
+                    <Fold v-if="!isCollapse" />
+                    <Expand v-else />
+                </el-icon>
+                <img src="../assets/img/gz_logo.png" alt="统一信息门户" class="h-10 w-10 object-cover" style="height: 50px; width: 50px;border: 1px solid white;border-radius: 25px;">
+                <h1 class="ml-3 text-xl font-medium text-white">统一信息门户</h1>
+            </div>
+            <div class="flex items-center space-x-6">
+                <el-icon class="text-xl cursor-pointer text-white/90 hover:text-white">
+                    <FullScreen />
+                </el-icon>
+                <el-badge :value="3" class="cursor-pointer">
+                    <el-icon class="text-xl text-white/90 hover:text-white">
+                        <Bell />
+                    </el-icon>
+                </el-badge>
+                <el-dropdown>
+                    <span class="flex items-center cursor-pointer">
+                        <img :src="avatarUrl" class="w-8 h-8 rounded-full object-cover">
+                        <span class="ml-2 text-white">潘朝露</span>
+                    </span>
+                    <template #dropdown>
+                        <el-dropdown-menu>
+                            <el-dropdown-item>个人信息</el-dropdown-item>
+                            <el-dropdown-item>退出登录</el-dropdown-item>
+                        </el-dropdown-menu>
+                    </template>
+                </el-dropdown>
+            </div>
+        </header>   
+        <!-- 左侧菜单 -->
+         <!-- <aside class="fixed"> -->
+        <aside class="fixed left-0 top-16 bottom-0 bg-white shadow-sm overflow-y-auto transition-all duration-300"
+            :class="isCollapse ? 'w-16' : 'w-64'">
+            
+            <el-menu :default-active="activeMenu" class="h-full" :collapse="isCollapse" style="display: block;" @select="handleSelect">
+                <template v-for="menu in menus">
+                    <el-sub-menu :index="menu.key">
+                        <template #title>
+                            <el-icon>
+                                <Monitor />
+                            </el-icon>
+                            <span>{{ menu.label }}</span>
+                        </template>
+                        <el-menu-item v-for="sub in menu.children" :key="sub.key" :index="sub.key">
+                                <el-icon>
+                                    <component :is="sub.icon" />
+                                </el-icon>
+                                <span>{{ sub.label }}</span>
+                        </el-menu-item>
+                    </el-sub-menu>
+                </template>
+            </el-menu>
+        </aside>
+        <!-- 主内容区 -->       
+        <main class="pt-16 p-6 transition-all duration-300" :class="isCollapse ? 'ml-16' : 'ml-64'">
+            <router-view></router-view>
+        </main>
+    </div>
+</template>
+<script lang="ts" setup>
+import { ref, onMounted } from 'vue';
+import * as echarts from 'echarts';
+import { Monitor, DataLine, Setting, Lock, Connection, Tools, Fold, Expand, HomeFilled, Timer, Warning, TrendCharts, Odometer, DocumentDelete, Download, Edit, Refresh, Delete, Position, Collection, Link, Goods, SetUp, FolderOpened, Share, Management, Key, User, UserFilled, CircleCheck, Notebook, Guide, Bell, Document, Service } from '@element-plus/icons-vue';
+import component from 'element-plus/es/components/tree-select/src/tree-select-option.mjs';
+
+import { useRouter } from 'vue-router';
+// const logoUrl = 'http://192.168.120.103:5173/img/logo.png';
+// const logoUrl = logoImg;
+const avatarUrl = 'https://ai-public.mastergo.com/ai/img_res/02eb0a5c2d4bd29638dcd199c1bd8b0a.jpg';
+const isCollapse = ref(false);
+const activeMenu = ref('1-1');
+const dateRange = ref([]);
+const menus = ref([
+    {
+        key: '1',
+        label: '首页',
+        icon: 'Monitor',
+        children: [
+            { key: 'ptzl', label: '平台总览', icon: 'HomeFilled' }
+        ]
+    },
+    {
+        key: '2',
+        label: '平台门户',
+        icon: 'DataLine',
+        children: [
+            { key: 'ptmh', label: '平台门户', icon: 'HomeFilled' }
+        ]
+    },
+    {
+        key: '3',
+        label: '平台管理',
+        icon: 'Setting',
+        children: [
+            { key: 'ptgl', label: '平台管理', icon: 'Download' }
+        ]
+    },
+    {
+        key: '4',
+        label: '平台服务中心',
+        icon: 'Connection',
+        children: [
+            { key: 'wgfw', label: '网关服务', icon: 'Link' },
+            { key: 'xxfw', label: '消息服务', icon: 'Goods' },
+            { key: 'sqfw', label: '授权服务', icon: 'SetUp' },
+            { key: 'yhfw', label: '用户服务', icon: 'FolderOpened' },
+            { key: 'sjfw', label: '事件服务', icon: 'Share' }
+        ]
+    },
+    {
+        key: '5',
+        label: '系统接口',
+        icon: 'Lock',
+        children: [
+            { key: 'sjsq', label: '授权服务', icon: 'Key' },
+            { key: 'yhgl', label: '业务接口', icon: 'User' }
+        ]
+    },
+    {
+        key: '6',
+        label: '系统设置',
+        icon: 'Tools',
+        children: [
+            { key: '6-1', label: '用户管理', icon: 'Guide' },
+            { key: 'jsgl', label: '角色管理', icon: 'Bell' },
+            { key: 'yygl', label: '应用管理', icon: 'Document' },
+            { key: 'dlrz', label: '登录日志', icon: 'Document' },
+            { key: 'fwrz', label: '访问日志', icon: 'Document' },
+            { key: 'xxfs', label: '消息发送', icon: 'Document' },
+            { key: '6-4', label: '部门管理', icon: 'Service' },
+            { key: '6-4', label: '字典管理', icon: 'Service' }
+        ]
+    }
+]);
+const router = useRouter();
+function handleSelect(key, keyPath) {
+    router.push(key);
+    activeMenu.value = key;
+};
+</script>

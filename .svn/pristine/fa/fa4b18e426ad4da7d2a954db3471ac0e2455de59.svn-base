@@ -1,0 +1,249 @@
+<template>
+	<!-- 搜索和操作区域 -->
+	<div class="bg-white p-4 rounded-lg shadow-sm mb-6">
+	<div class="flex items-center justify-between mb-4">
+	<div class="flex items-center space-x-4">
+	<el-input
+	placeholder="请输入产品名称"
+	class="w-64">
+	<template #prefix>
+	<el-icon><Search /></el-icon>
+	</template>
+	</el-input>
+	<el-select placeholder="产品类型" class="w-32">
+	<el-option label="智能水表" value="waterMeter" />
+	<el-option label="压力监测" value="pressure" />
+	<el-option label="水质监测" value="waterQuality" />
+	<el-option label="流量监测" value="flow" />
+	</el-select>
+	</div>
+	<el-button type="primary" class="!rounded-button" @click="dialogVisible = true">
+	<el-icon class="mr-1"><Plus /></el-icon>
+	新建产品
+	</el-button>
+	<!-- 新建产品对话框 -->
+	<el-dialog
+	v-model="dialogVisible"
+	title="新建产品"
+	width="500px">
+	<el-form :model="form" label-width="100px">
+	<el-form-item label="产品名称">
+	<el-input v-model="form.name" placeholder="请输入产品名称" />
+	</el-form-item>
+	<el-form-item label="所属分类">
+	<el-select v-model="form.category" placeholder="请选择产品分类" class="w-full">
+	<el-option label="智能水表" value="waterMeter" />
+	<el-option label="压力监测" value="pressure" />
+	<el-option label="水质监测" value="waterQuality" />
+	<el-option label="流量监测" value="flow" />
+	</el-select>
+	</el-form-item>
+	<el-form-item label="物模型">
+	<el-radio-group v-model="form.model">
+	<el-radio label="标准" />
+	<el-radio label="自定义" />
+	</el-radio-group>
+	</el-form-item>
+	<el-form-item label="认证方式">
+	<el-radio-group v-model="form.auth">
+	<el-radio label="密钥认证" />
+	<el-radio label="证书认证" />
+	</el-radio-group>
+	</el-form-item>
+	<el-form-item label="数据格式">
+	<el-select v-model="form.dataFormat" placeholder="请选择数据格式" class="w-full">
+	<el-option label="JSON" value="json" />
+	<el-option label="二进制" value="binary" />
+	<el-option label="自定义" value="custom" />
+	</el-select>
+	</el-form-item>
+	<el-form-item label="描述">
+	<el-input
+	v-model="form.description"
+	type="textarea"
+	placeholder="请输入产品描述"
+	rows="3" />
+	</el-form-item>
+	</el-form>
+	<template #footer>
+	<span class="dialog-footer">
+	<el-button @click="dialogVisible = false" class="!rounded-button">取消</el-button>
+	<el-button type="primary" @click="handleSubmit" class="!rounded-button">确定</el-button>
+	</span>
+	</template>
+	</el-dialog>
+	</div>
+	</div>
+	<!-- 产品列表 -->
+	<div class="bg-white rounded-lg shadow-sm">
+	<el-table :data="productList" style="width: 100%">
+	<el-table-column prop="name" label="产品名称" />
+	<el-table-column prop="category" label="产品分类">
+	<template #default="scope">
+	<el-tag>{{ scope.row.category }}</el-tag>
+	</template>
+	</el-table-column>
+	<el-table-column prop="deviceCount" label="设备数量" />
+	<el-table-column prop="model" label="物模型" />
+	<el-table-column prop="auth" label="认证方式" />
+	<el-table-column prop="createTime" label="创建时间" width="160" />
+	<el-table-column prop="status" label="状态" width="80">
+	<template #default="scope">
+	<el-tag :type="scope.row.status ? 'success' : 'info'">
+	{{ scope.row.status ? '已发布' : '开发中' }}
+	</el-tag>
+	</template>
+	</el-table-column>
+	<el-table-column label="操作" width="200">
+	<template #default="scope">
+	<el-button text type="primary" size="small" class="!rounded-button">
+	<el-icon class="mr-1"><Edit /></el-icon>编辑
+	</el-button>
+	<el-button text type="primary" size="small" class="!rounded-button">
+	<el-icon class="mr-1"><Link /></el-icon>物模型
+	</el-button>
+	<el-button text type="danger" size="small" class="!rounded-button">
+	<el-icon class="mr-1"><Delete /></el-icon>删除
+	</el-button>
+	</template>
+	</el-table-column>
+	</el-table>
+	<div class="flex justify-end p-4">
+	<el-pagination
+	:total="100"
+	:page-size="10"
+	:current-page="1"
+	background
+	layout="prev, pager, next" />
+	</div>
+	</div>
+</template>
+
+<script lang="ts" setup>
+import { ref } from 'vue';
+import { Bell, Monitor, DataLine, Operation, Connection, Lock, Setting, Search, Plus, Edit, Link, Delete } from '@element-plus/icons-vue';
+
+const dialogVisible = ref(false);
+const form = ref({
+name: '',
+category: '',
+model: '标准',
+auth: '密钥认证',
+dataFormat: '',
+description: ''
+});
+const deviceDialogVisible = ref(false);
+const selectedDevices = ref<string[]>([]);
+const deviceList = ref([
+{
+id: '1',
+name: 'PM2020型压力传感器',
+type: '压力监测',
+location: '西区管网节点A',
+status: '在线'
+},
+{
+id: '2',
+name: 'TDS1080水质分析仪',
+type: '水质监测',
+location: '东区水厂出水口',
+status: '在线'
+},
+{
+id: '3',
+name: 'FL5090流量计',
+type: '流量监测',
+location: '南区供水干管',
+status: '离线'
+},
+{
+id: '4',
+name: 'WQ3030余氯分析仪',
+type: '水质监测',
+location: '北区加压站',
+status: '在线'
+},
+{
+id: '5',
+name: 'PH2088酸碱度检测仪',
+type: '水质监测',
+location: '中心水厂',
+status: '在线'
+}
+]);
+const handleDeviceSelect = (selection: any[]) => {
+selectedDevices.value = selection.map(item => item.id);
+};
+const handleDeviceBind = () => {
+// 这里添加设备绑定逻辑
+deviceDialogVisible.value = false;
+selectedDevices.value = [];
+};
+const handleSubmit = () => {
+// 这里添加表单提交逻辑
+dialogVisible.value = false;
+// 重置表单
+form.value = {
+name: '',
+type: '',
+ip: '',
+port: '',
+query: false,
+timeSync: false,
+enabled: true
+};
+};
+const productList = ref([
+{
+name: 'NB-IoT智能水表',
+category: '智能水表',
+deviceCount: 1280,
+model: '标准',
+auth: '密钥认证',
+status: true,
+createTime: '2024-01-15 14:30:22'
+},
+{
+name: 'LoRa智能压力监测终端',
+category: '压力监测',
+deviceCount: 526,
+model: '自定义',
+auth: '证书认证',
+status: true,
+createTime: '2024-01-14 09:15:33'
+},
+{
+name: '多参数水质在线监测仪',
+category: '水质监测',
+deviceCount: 168,
+model: '标准',
+auth: '密钥认证',
+status: true,
+createTime: '2024-01-13 16:45:12'
+},
+{
+name: '超声波流量计',
+category: '流量监测',
+deviceCount: 342,
+model: '标准',
+auth: '密钥认证',
+status: false,
+createTime: '2024-01-12 11:20:45'
+},
+{
+name: '智能远传水表',
+category: '智能水表',
+deviceCount: 2156,
+model: '标准',
+auth: '密钥认证',
+status: true,
+createTime: '2024-01-11 15:55:18'
+}
+]);
+// 删除未使用的函数
+</script>
+<style scoped>
+.el-menu {
+border-right: none;
+}
+</style>

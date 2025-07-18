@@ -1,0 +1,101 @@
+<template>
+    <div class="bg-white p-6 rounded-lg shadow-sm">
+                <div class="flex items-center justify-between mb-6">
+                    <h2 class="text-lg font-medium">远程设置</h2>
+                    <el-button type="primary" class="!rounded-button whitespace-nowrap">
+                        <el-icon class="mr-1">
+                            <Position />
+                        </el-icon>
+                        新增设置
+                    </el-button>
+                </div>
+
+                <el-table :data="deviceSettings" border>
+                    <el-table-column label="设备编号" prop="deviceId" width="180" />
+                    <el-table-column label="设备名称" prop="deviceName" width="200" />
+                    <el-table-column label="参数类型" prop="paramType" width="150" />
+                    <el-table-column label="设置值" prop="setValue" width="120" />
+                    <el-table-column label="设置时间" prop="setTime" width="180" />
+                    <el-table-column label="设置状态" width="120">
+                        <template #default="{ row }">
+                            <el-tag
+                                :type="row.status === '成功' ? 'success' : row.status === '失败' ? 'danger' : 'warning'">
+                                {{ row.status }}
+                            </el-tag>
+                        </template>
+                    </el-table-column>
+                    <el-table-column label="操作" width="200">
+                        <template #default>
+                            <el-button type="primary" size="small" class="!rounded-button whitespace-nowrap">
+                                <el-icon class="mr-1">
+                                    <Edit />
+                                </el-icon>
+                                修改
+                            </el-button>
+                            <el-button type="danger" size="small" class="ml-2 !rounded-button whitespace-nowrap">
+                                <el-icon class="mr-1">
+                                    <Delete />
+                                </el-icon>
+                                删除
+                            </el-button>
+                        </template>
+                    </el-table-column>
+                </el-table>
+
+                <div class="flex justify-center mt-4">
+                    <el-pagination v-model:current-page="currentPage" v-model:page-size="pageSize" :total="total"
+                        :page-sizes="[10, 20, 30, 50]" layout="total, sizes, prev, pager, next, jumper" />
+                </div>
+            </div>
+</template>
+<script lang="ts" setup>
+//远程设置
+import { ref, onMounted, watch } from 'vue';
+import * as echarts from 'echarts';
+import { Monitor, DataLine, Setting, Lock, Connection, Tools, Fold, Expand, HomeFilled, Timer, Warning, TrendCharts, Odometer, DocumentDelete, Download, Edit, Refresh, Delete, Position, Collection, Link, Goods, SetUp, FolderOpened, Share, Management, Key, User, UserFilled, CircleCheck, Notebook, Guide, Bell, Document, Service, Platform } from '@element-plus/icons-vue';
+
+const deviceSettings = [
+    {
+        deviceId: 'DEV20240120001',
+        deviceName: '智能水表-A区1号',
+        paramType: '采集频率',
+        setValue: '30分钟',
+        setTime: '2024-01-20 15:30:22',
+        status: '成功'
+    },
+    {
+        deviceId: 'DEV20240120002',
+        deviceName: '压力监测仪-B区2号',
+        paramType: '报警阈值',
+        setValue: '0.8MPa',
+        setTime: '2024-01-20 14:25:16',
+        status: '处理中'
+    },
+    {
+        deviceId: 'DEV20240120003',
+        deviceName: '水质监测仪-C区3号',
+        paramType: 'pH值范围',
+        setValue: '6.5-8.5',
+        setTime: '2024-01-20 13:15:42',
+        status: '失败'
+    },
+    {
+        deviceId: 'DEV20240120004',
+        deviceName: '流量计-D区4号',
+        paramType: '计量单位',
+        setValue: 'm³/h',
+        setTime: '2024-01-20 12:05:33',
+        status: '成功'
+    },
+    {
+        deviceId: 'DEV20240120005',
+        deviceName: '水位监测仪-E区5号',
+        paramType: '预警水位',
+        setValue: '4.5m',
+        setTime: '2024-01-20 11:30:12',
+        status: '成功'
+    }
+];
+</script>
+<style scoped>
+</style>

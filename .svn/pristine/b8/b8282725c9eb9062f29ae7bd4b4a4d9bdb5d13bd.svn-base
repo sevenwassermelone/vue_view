@@ -1,0 +1,280 @@
+<template>
+	
+	<!-- 搜索和操作区域 -->
+	<div class="bg-white p-4 rounded-lg shadow-sm mb-6">
+	<div class="flex items-center justify-between mb-4">
+	<div class="flex items-center space-x-4">
+	<el-input
+	placeholder="请输入标签名称"
+	class="w-64">
+	<template #prefix>
+	<el-icon><Search /></el-icon>
+	</template>
+	</el-input>
+	<el-select placeholder="标签类型" class="w-32">
+	<el-option label="设备标签" value="device" />
+	<el-option label="告警标签" value="alarm" />
+	<el-option label="数据标签" value="data" />
+	</el-select>
+	</div>
+	<el-button type="primary" class="!rounded-button" @click="dialogVisible = true">
+	<el-icon class="mr-1"><Plus /></el-icon>
+	新建标签
+	</el-button>
+	<!-- 新建标签对话框 -->
+	<el-dialog
+	v-model="dialogVisible"
+	title="新建标签"
+	width="500px">
+	<el-form :model="form" label-width="100px">
+	<el-form-item label="标签名称">
+	<el-input v-model="form.name" placeholder="请输入标签名称" />
+	</el-form-item>
+	<el-form-item label="标签类型">
+	<el-select v-model="form.type" placeholder="请选择标签类型" class="w-full">
+	<el-option label="设备标签" value="设备标签" />
+	<el-option label="告警标签" value="告警标签" />
+	<el-option label="数据标签" value="数据标签" />
+	</el-select>
+	</el-form-item>
+	<el-form-item label="描述">
+	<el-input v-model="form.description" type="textarea" rows="3" placeholder="请输入标签描述" />
+	</el-form-item>
+	<el-form-item label="状态">
+	<el-switch v-model="form.status" :active-value="'启用'" :inactive-value="'禁用'" />
+	</el-form-item>
+	</el-form>
+	<template #footer>
+	<span class="dialog-footer">
+	<el-button @click="dialogVisible = false" class="!rounded-button">取消</el-button>
+	<el-button type="primary" @click="handleSubmit" class="!rounded-button">确定</el-button>
+	</span>
+	</template>
+	</el-dialog>
+	</div>
+	</div>
+	<!-- 标签列表 -->
+	<div class="bg-white rounded-lg shadow-sm">
+	<el-table :data="tagList" style="width: 100%">
+	<el-table-column prop="name" label="标签名称" width="180" />
+	<el-table-column prop="type" label="标签类型" width="120">
+	<template #default="scope">
+	<el-tag :type="getTagType(scope.row.type)">{{ scope.row.type }}</el-tag>
+	</template>
+	</el-table-column>
+	<el-table-column prop="description" label="描述" />
+	<el-table-column prop="createTime" label="创建时间" width="180" />
+	<el-table-column prop="creator" label="创建人" width="120" />
+	<el-table-column prop="status" label="状态" width="100">
+	<template #default="scope">
+	<el-tag :type="scope.row.status === '启用' ? 'success' : 'info'">
+	{{ scope.row.status }}
+	</el-tag>
+	</template>
+	</el-table-column>
+	<el-table-column label="操作" width="200">
+	<template #default="scope">
+	<el-button text type="primary" size="small" class="!rounded-button">
+	<el-icon class="mr-1"><Edit /></el-icon>编辑
+	</el-button>
+	<el-button text type="primary" size="small" class="!rounded-button" @click="deviceDialogVisible = true">
+	<el-icon class="mr-1"><Link /></el-icon>绑定
+	</el-button>
+	<el-button text type="danger" size="small" class="!rounded-button">
+	<el-icon class="mr-1"><Delete /></el-icon>删除
+	</el-button>
+	</template>
+	</el-table-column>
+	</el-table>
+	
+	<!-- 设备绑定对话框 -->
+	<el-dialog
+	  v-model="deviceDialogVisible"
+	  title="绑定设备"
+	  width="800px">
+	  <div class="mb-4">
+	    <el-input
+	      placeholder="搜索设备名称"
+	      class="w-64">
+	      <template #prefix>
+	        <el-icon><Search /></el-icon>
+	      </template>
+	    </el-input>
+	  </div>
+	  <el-table
+	    :data="deviceList"
+	    @selection-change="handleDeviceSelect"
+	    style="width: 100%">
+	    <el-table-column
+	      type="selection"
+	      width="55" />
+	    <el-table-column
+	      prop="name"
+	      label="设备名称"
+	      width="200" />
+	    <el-table-column
+	      prop="type"
+	      label="设备类型"
+	      width="120" />
+	    <el-table-column
+	      prop="location"
+	      label="安装位置" />
+	    <el-table-column
+	      prop="status"
+	      label="状态"
+	      width="100">
+	      <template #default="scope">
+	        <el-tag :type="scope.row.status === '在线' ? 'success' : 'danger'">
+	          {{ scope.row.status }}
+	        </el-tag>
+	      </template>
+	    </el-table-column>
+	  </el-table>
+	  <template #footer>
+	    <span class="dialog-footer">
+	      <el-button @click="deviceDialogVisible = false" class="!rounded-button">取消</el-button>
+	      <el-button type="primary" @click="handleDeviceBind" class="!rounded-button">确定</el-button>
+	    </span>
+	  </template>
+	</el-dialog>
+	
+	<div class="flex justify-end p-4">
+	<el-pagination
+	:total="100"
+	:page-size="10"
+	:current-page="1"
+	background
+	layout="prev, pager, next" />
+	</div>
+	</div>
+	
+</template>
+
+<script lang="ts" setup>
+import { ref } from 'vue';
+import { Bell, Monitor, DataLine, Operation, Connection, Lock, Setting, Search, Plus, Edit, Link, Delete } from '@element-plus/icons-vue';
+
+const dialogVisible = ref(false);
+const form = ref({
+name: '',
+type: '',
+description: '',
+status: '启用'
+});
+
+const deviceDialogVisible = ref(false);
+const selectedDevices = ref<string[]>([]);
+const deviceList = ref([
+  {
+    id: '1',
+    name: '广州市黄埔区人民检察院',
+    type: '非居民水表',
+    location: '汇星路',
+    status: '在线'
+  },
+  {
+    id: '2',
+    name: '广州创维平面显示科技有限公司',
+    type: '非居民水表',
+    location: '开达路',
+    status: '在线'
+  },
+  {
+    id: '3',
+    name: '天泰二路',
+    type: '消火栓',
+    location: '天泰二路',
+    status: '离线'
+  },
+  {
+    id: '4',
+    name: '萝岗智能井盖-01',
+    type: '智能井盖',
+    location: '汇星路',
+    status: '在线'
+  },
+  {
+    id: '5',
+    name: '萝岗智能井盖-01',
+    type: '智能井盖',
+    location: '汇星路',
+    status: '在线'
+  }
+]);
+
+const handleDeviceSelect = (selection: any[]) => {
+  selectedDevices.value = selection.map(item => item.id);
+};
+
+const handleDeviceBind = () => {
+  // 这里添加设备绑定逻辑
+  deviceDialogVisible.value = false;
+  selectedDevices.value = [];
+};
+const handleSubmit = () => {
+// 这里添加表单提交逻辑
+dialogVisible.value = false;
+// 重置表单
+form.value = {
+name: '',
+type: '',
+description: '',
+status: '启用'
+};
+};
+const tagList = ref([
+{
+name: '高价值设备',
+type: '设备标签',
+description: '价值超过50万元的重要设备',
+createTime: '2025-02-15 10:30:00',
+creator: '张工程师',
+status: '启用'
+},
+{
+name: '水质监测点',
+type: '设备标签',
+description: '用于水质监测的关键监测点位',
+createTime: '2025-02-14 15:45:00',
+creator: '李维护',
+status: '启用'
+},
+{
+name: '压力异常',
+type: '告警标签',
+description: '管网压力超出正常范围的告警标记',
+createTime: '2025-02-13 09:20:00',
+creator: '王管理',
+status: '启用'
+},
+{
+name: '定期维护',
+type: '数据标签',
+description: '需要定期维护的设备标记',
+createTime: '2025-02-12 14:15:00',
+creator: '刘技术',
+status: '禁用'
+},
+{
+name: '重点区域',
+type: '设备标签',
+description: '区中心核心供水区域设备',
+createTime: '2025-02-11 11:30:00',
+creator: '陈工程师',
+status: '启用'
+}
+]);
+const getTagType = (type: string) => {
+const types: Record<string, string> = {
+'设备标签': 'primary',
+'告警标签': 'danger',
+'数据标签': 'success'
+};
+return types[type] || 'info';
+};
+</script>
+<style scoped>
+.el-menu {
+border-right: none;
+}
+</style>

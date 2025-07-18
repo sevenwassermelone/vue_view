@@ -1,0 +1,448 @@
+<template>
+    <!-- 数据概览卡片 -->
+    <div class="grid grid-cols-5 gap-6 mb-6">
+                <div v-for="(card, index) in dataCards" :key="index"
+                    class="bg-white rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-gray-500 mb-2">{{ card.label }}</p>
+                            <p class="text-2xl font-semibold">{{ card.value }}</p>
+                        </div>
+                        <el-icon class="text-3xl" :class="card.iconColor">
+                            <component :is="card.icon" />
+                        </el-icon>
+                    </div>
+                    <div class="mt-4 text-sm" :class="card.trendColor">
+                        {{ card.trend }}
+                    </div>
+                </div>
+            </div>
+            <!-- 图表区域 -->
+            <div class="grid grid-cols-2 gap-6">
+                <!-- 业务系统取数曲线 -->
+                <div class="bg-white p-6 rounded-lg shadow-sm">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-medium">业务系统取数趋势</h3>
+                        <el-date-picker v-model="dateRange" type="daterange" range-separator="至"
+                            start-placeholder="开始日期" end-placeholder="结束日期" size="small" />
+                    </div>
+                    <div ref="dataFetchChart" class="h-80"></div>
+                </div>
+                <!-- 数据总线监控 -->
+                <div class="bg-white p-6 rounded-lg shadow-sm">
+                    <h3 class="text-lg font-medium mb-4">数据总线监控</h3>
+                    <div ref="dataBusChart" class="h-80"></div>
+                </div>
+                <!-- 异常事件统计 -->
+                <div class="bg-white p-6 rounded-lg shadow-sm">
+                    <h3 class="text-lg font-medium mb-4">异常事件统计</h3>
+                    <el-table :data="errorList" :max-height="320">
+                        <el-table-column prop="time" label="时间" width="180" />
+                        <el-table-column prop="system" label="业务系统" width="150" />
+                        <el-table-column prop="type" label="异常类型" width="120" />
+                        <el-table-column prop="count" label="发生次数" width="100" />
+                        <el-table-column prop="status" label="状态">
+                            <template #default="scope">
+                                <el-tag :type="scope.row.status === '已解决' ? 'success' : 'danger'">
+                                    {{ scope.row.status }}
+                                </el-tag>
+                            </template>
+                        </el-table-column>
+                    </el-table>
+                </div>
+                <!-- 各维度设备分布 -->
+                <div class="bg-white p-6 rounded-lg shadow-sm">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-medium">各维度设备分布</h3>
+                        <div class="space-x-2">
+                            <el-button :type="deviceDistType === 'type' ? 'primary' : 'default'" size="small"
+                                class="!rounded-button whitespace-nowrap" @click="deviceDistType = 'type'">
+                                设备类型
+                            </el-button>
+                            <el-button :type="deviceDistType === 'vendor' ? 'primary' : 'default'" size="small"
+                                class="!rounded-button whitespace-nowrap" @click="deviceDistType = 'vendor'">
+                                设备厂商
+                            </el-button>
+                            <el-button :type="deviceDistType === 'area' ? 'primary' : 'default'" size="small"
+                                class="!rounded-button whitespace-nowrap" @click="deviceDistType = 'area'">
+                                区域分布
+                            </el-button>
+                        </div>
+                    </div>
+                    <div ref="deviceDistChart" class="h-80"></div>
+                </div>
+            </div>
+</template>
+<script lang="ts" setup>
+import { ref, onMounted, watch } from 'vue';
+import * as echarts from 'echarts';
+const dateRange = ref([]);
+const deviceDistType = ref<'type' | 'vendor' | 'area'>('type');
+const deviceTypeStats = ref([
+        {
+            type: '水质在线监测仪',
+            total: 1048,
+            online: 1020,
+            offline: 18,
+            fault: 10,
+            onlineRate: '97.3%'
+        },
+        {
+            type: '智能流量计',
+            total: 735,
+            online: 710,
+            offline: 15,
+            fault: 10,
+            onlineRate: '96.6%'
+        },
+        {
+            type: '压力监测仪',
+            total: 580,
+            online: 565,
+            offline: 10,
+            fault: 5,
+            onlineRate: '97.4%'
+        },
+        {
+            type: '水位监测仪',
+            total: 484,
+            online: 470,
+            offline: 8,
+            fault: 6,
+            onlineRate: '97.1%'
+        },
+        {
+            type: '智能消火栓',
+            total: 300,
+            online: 288,
+            offline: 7,
+            fault: 5,
+            onlineRate: '96.0%'
+        }
+    ]);
+const menus = ref([
+    {
+        key: '1',
+        label: '采集监控',
+        icon: 'Monitor',
+        children: [
+            { key: '1-1', label: '平台总览', icon: 'HomeFilled' },
+            { key: '/ssjk', path:'/ssjk',label: '实时监测', icon: 'Timer',component:()=>import("../views/ssjk.vue")},
+            { key: '1-3', label: '实时报警', icon: 'Warning' }
+        ]
+    },
+    {
+        key: '2',
+        label: '数据分析',
+        icon: 'DataLine',
+        children: [
+            { key: '2-1', label: '单点分析', icon: 'TrendCharts' },
+            { key: '2-2', label: '设备完好率', icon: 'Odometer' },
+            { key: '2-3', label: '解码失败报文', icon: 'DocumentDelete' },
+            { key: '2-4', label: '大屏可视化', icon: 'Monitor' },
+            { key: '2-5', label: '历史数据', icon: 'Document' },
+            { key: '2-6', label: '报表统计', icon: 'DataLine' }
+        ]
+    },
+    {
+        key: '3',
+        label: '运行管理',
+        icon: 'Setting',
+        children: [
+            { key: '3-1', label: '批量导出', icon: 'Download' },
+            { key: '3-2', label: '数据填报', icon: 'Edit' },
+            { key: '3-3', label: '数据修复', icon: 'Refresh' },
+            { key: '3-4', label: '数据清洗', icon: 'Delete' },
+            { key: '3-5', label: '远程设置', icon: 'Position' },
+            { key: '3-6', label: '标签管理', icon: 'Collection' }
+        ]
+    },
+    {
+        key: '4',
+        label: '接入管理',
+        icon: 'Connection',
+        children: [
+            { key: '4-1', label: '接入管理', icon: 'Link' },
+            { key: '4-2', label: '产品管理', icon: 'Goods' },
+            { key: '4-3', label: '设备管理', icon: 'SetUp' },
+            { key: '4-4', label: '分组管理', icon: 'FolderOpened' },
+            { key: '4-5', label: '网络组件', icon: 'Share' },
+            { key: '4-6', label: '编解码插件', icon: 'Management' }
+        ]
+    },
+    {
+        key: '5',
+        label: '权限管理',
+        icon: 'Lock',
+        children: [
+            { key: '5-1', label: '数据授权', icon: 'Key' },
+            { key: '5-2', label: '用户管理', icon: 'User' },
+            { key: '5-3', label: '角色管理', icon: 'UserFilled' },
+            { key: '5-4', label: '权限分配', icon: 'CircleCheck' },
+            { key: '5-5', label: '访问日志', icon: 'Notebook' }
+        ]
+    },
+    {
+        key: '6',
+        label: '系统设置',
+        icon: 'Tools',
+        children: [
+            { key: '6-1', label: '网络配置', icon: 'Guide' },
+            { key: '6-2', label: '告警配置', icon: 'Bell' },
+            { key: '6-3', label: '系统日志', icon: 'Document' },
+            { key: '6-4', label: '系统维护', icon: 'Service' }
+        ]
+    }
+]);
+const dataCards = [
+    {
+        label: '设备总数',
+        value: '240,510',
+        icon: 'Monitor',
+        iconColor: 'text-blue-500',
+        trend: '较上月增长 8.5%',
+        trendColor: 'text-green-500'
+    },
+    {
+        label: '设备在线率',
+        value: '98.6%',
+        icon: 'Connection',
+        iconColor: 'text-green-500',
+        trend: '较昨日上升 0.3%',
+        trendColor: 'text-green-500'
+    },
+    {
+        label: '设备抄见率',
+        value: '96.8%',
+        icon: 'DataLine',
+        iconColor: 'text-blue-500',
+        trend: '较昨日上升 0.5%',
+        trendColor: 'text-green-500'
+    },
+    {
+        label: '数据完整率',
+        value: '99.2%',
+        icon: 'CircleCheck',
+        iconColor: 'text-green-500',
+        trend: '维持稳定水平',
+        trendColor: 'text-gray-500'
+    },
+    {
+        label: '报文并发量',
+        value: '1,826/s',
+        icon: 'Share',
+        iconColor: 'text-purple-500',
+        trend: '高峰期 2,350/s',
+        trendColor: 'text-orange-500'
+    }
+];
+const errorList = [
+    {
+        time: '2025-02-27 14:30:22',
+        system: '计量中心子系统',
+        type: '数据访问超时',
+        count: 15,
+        status: '未解决'
+    },
+    {
+        time: '2025-02-27 13:15:46',
+        system: '水务数据中台',
+        type: '并发超限',
+        count: 28,
+        status: '已解决'
+    },
+    {
+        time: '2025-02-27 12:05:33',
+        system: '水务可视化平台',
+        type: '队列堆积',
+        count: 156,
+        status: '处理中'
+    },
+    {
+        time: '2025-02-27 11:30:12',
+        system: '网格化管理子系统',
+        type: '查询响应慢',
+        count: 45,
+        status: '已解决'
+    }
+];
+// 图表初始化
+const dataFetchChart = ref<HTMLElement | null>(null);
+const dataBusChart = ref<HTMLElement | null>(null);
+const deviceDistChart = ref<HTMLElement | null>(null);
+// 各维度设备分布
+
+
+    onMounted(() => {
+    // 业务系统取数趋势
+    const dataFetchInstance = echarts.init(dataFetchChart.value!);
+    dataFetchInstance.setOption({
+        animation: false,
+        tooltip: {
+            trigger: 'axis'
+        },
+        legend: {
+            data: ['取数速度', '响应时间', '并发数']
+        },
+        xAxis: {
+            type: 'category',
+            data: ['00:00', '04:00', '08:00', '12:00', '16:00', '20:00']
+        },
+        yAxis: [
+            {
+                type: 'value',
+                name: '取数速度(次/s)',
+                position: 'left'
+            },
+            {
+                type: 'value',
+                name: '响应时间(ms)',
+                position: 'right'
+            }
+        ],
+        series: [
+            {
+                name: '取数速度',
+                type: 'line',
+                data: [120, 132, 189, 234, 290, 330]
+            },
+            {
+                name: '响应时间',
+                type: 'line',
+                yAxisIndex: 1,
+                data: [20, 25, 30, 45, 50, 35]
+            },
+            {
+                name: '并发数',
+                type: 'bar',
+                data: [50, 65, 85, 120, 150, 95]
+            }
+        ]
+    });
+    // 数据总线监控
+    const dataBusInstance = echarts.init(dataBusChart.value!);
+    dataBusInstance.setOption({
+        animation: false,
+        tooltip: {
+            trigger: 'axis'
+        },
+        legend: {
+            data: ['当前队列', '处理速度', '历史数据量']
+        },
+        xAxis: {
+            type: 'category',
+            data: ['00:00', '04:00', '08:00', '12:00', '16:00', '20:00']
+        },
+        yAxis: [
+            {
+                type: 'value',
+                name: '数量',
+                position: 'left'
+            },
+            {
+                type: 'value',
+                name: '速度(条/s)',
+                position: 'right'
+            }
+        ],
+        series: [
+            {
+                name: '当前队列',
+                type: 'line',
+                data: [300, 450, 600, 800, 1000, 750]
+            },
+            {
+                name: '处理速度',
+                type: 'line',
+                yAxisIndex: 1,
+                data: [1000, 1200, 1500, 2000, 2200, 1800]
+            },
+            {
+                name: '历史数据量',
+                type: 'bar',
+                data: [5000, 5500, 6000, 6500, 7000, 7500]
+            }
+        ]
+    });
+    // 各维度设备分布
+    const deviceDistInstance = echarts.init(deviceDistChart.value!);
+    const updateDeviceDistChart = () => {
+    let chartData: ChartDataItem[];
+    if (deviceDistType.value === 'type') {
+        chartData = [
+            { value: 235543, name: '水表' },
+            { value: 4965, name: '消火栓' },
+            { value: 580, name: '二供/加压站' },
+            { value: 1, name: '减压阀' },
+            { value: 300, name: '摄像头' }
+        ];
+    } else if (deviceDistType.value === 'vendor') {
+        chartData = [
+            { value: 79207, name: '深仪兆业' },
+            { value: 26360, name: '三川智慧' },
+            { value: 2937, name: '宁波埃美柯' },
+            { value: 43388, name: '兆基仪表' },
+            { value: 24125, name: '新天科技' }
+        ];
+    } else {
+        chartData = [
+            { value: 8773, name: '东区' },
+            { value: 19667, name: '九龙' },
+            { value: 558, name: '九龙镇' },
+            { value: 13053, name: '科学城' },
+            { value: 8012, name: '西区' }
+        ];
+    }
+    deviceDistInstance.setOption({
+        animation: false,
+        tooltip: {
+            trigger: 'item',
+            formatter: '{a} <br/>{b}: {c} ({d}%)'
+        },
+        legend: {
+            orient: 'vertical',
+            left: 'left',
+            top: 'center',
+            formatter: function(name) {
+                const item = chartData.find(item => item.name === name);
+                return `${name}: ${item ? item.value : 0}`;
+            }
+        },
+        series: [
+            {
+                name: deviceDistType.value === 'type' ? '设备类型分布' : deviceDistType.value === 'vendor' ? '设备厂家分布' : '区域分布',
+                type: 'pie',
+                radius: ['40%', '70%'],
+                avoidLabelOverlap: false,
+                itemStyle: {
+                    borderRadius: 10,
+                    borderColor: '#fff',
+                    borderWidth: 2
+                },
+                label: {
+                    show: false,
+                    position: 'center'
+                },
+                emphasis: {
+                    label: {
+                        show: true,
+                        fontSize: 20,
+                        fontWeight: 'bold'
+                    }
+                },
+                labelLine: {
+                    show: false
+                },
+                data: chartData
+            }
+        ]
+    });
+};
+// 初始渲染
+updateDeviceDistChart();
+// 监听分类方式变化
+watch(deviceDistType, () => {
+    updateDeviceDistChart();
+});
+});
+</script>

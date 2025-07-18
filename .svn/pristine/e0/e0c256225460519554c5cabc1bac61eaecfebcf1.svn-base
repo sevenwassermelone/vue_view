@@ -1,0 +1,286 @@
+<template>
+	<!-- 搜索和操作区域 -->
+	<div class="bg-white p-4 rounded-lg shadow-sm mb-6">
+		<div class="flex items-center justify-between mb-4">
+			<div class="flex items-center space-x-4">
+				<el-input placeholder="请输入设备名称" class="w-64">
+					<template #prefix>
+						<el-icon>
+							<Search />
+						</el-icon>
+					</template>
+				</el-input>
+				<el-select v-model="deviceType" placeholder="设备类型" class="w-32">
+					<el-option label="全部类型" value="" />
+					<el-option label="居民水表" value="waterMeter" />
+					<el-option label="非居民水表" value="pressure" />
+					<el-option label="消火栓" value="waterQuality" />
+					<el-option label="智能井盖" value="flow" />
+				</el-select>
+				<el-select v-model="deviceStatus" placeholder="设备状态" class="w-32">
+					<el-option label="全部状态" value="" />
+					<el-option label="在线" value="online" />
+					<el-option label="离线" value="offline" />
+					<el-option label="故障" value="fault" />
+				</el-select>
+			</div>
+			<div class="flex items-center space-x-4">
+				<el-button type="primary" class="!rounded-button" @click="dialogVisible = true">
+					<el-icon class="mr-1">
+						<Plus />
+					</el-icon>
+					添加设备
+				</el-button>
+				<el-button type="success" class="!rounded-button">
+					<el-icon class="mr-1">
+						<Download />
+					</el-icon>
+					导出设备
+				</el-button>
+			</div>
+		</div>
+	</div>
+
+	<!-- 设备列表 -->
+	<div class="bg-white rounded-lg shadow-sm">
+		<el-table :data="deviceList" style="width: 100%">
+			<el-table-column prop="name" label="设备名称" min-width="200" />
+			<el-table-column prop="deviceId" label="设备ID" width="120" />
+			<el-table-column prop="type" label="设备类型" width="120">
+				<template #default="scope">
+					<el-tag>{{ scope.row.type }}</el-tag>
+				</template>
+			</el-table-column>
+			<el-table-column prop="location" label="安装位置" min-width="180" />
+			<el-table-column prop="lastOnline" label="最后上线" width="160" />
+			<el-table-column prop="status" label="状态" width="100">
+				<template #default="scope">
+					<el-tag
+						:type="scope.row.status === '在线' ? 'success' : scope.row.status === '离线' ? 'info' : 'danger'">
+						{{ scope.row.status }}
+					</el-tag>
+				</template>
+			</el-table-column>
+			<el-table-column label="操作" width="280" fixed="right">
+				<template #default="scope">
+					<el-button text type="primary" size="small" class="!rounded-button">
+						<el-icon class="mr-1">
+							<View />
+						</el-icon>
+						查看
+					</el-button>
+					<el-button text type="primary" size="small" class="!rounded-button">
+						<el-icon class="mr-1">
+							<Edit />
+						</el-icon>
+						编辑
+					</el-button>
+					<el-button text type="warning" size="small" class="!rounded-button">
+						<el-icon class="mr-1">
+							<Setting />
+						</el-icon>
+						配置
+					</el-button>
+					<el-button text type="danger" size="small" class="!rounded-button">
+						<el-icon class="mr-1">
+							<Delete />
+						</el-icon>
+						删除
+					</el-button>
+				</template>
+			</el-table-column>
+		</el-table>
+		<div class="flex justify-end p-4">
+			<el-pagination :total="100" :page-size="10" :current-page="1" background layout="prev, pager, next" />
+		</div>
+	</div>
+
+	<!-- 添加设备对话框 -->
+	<el-dialog v-model="dialogVisible" title="添加设备" width="500px">
+		<el-form :model="form" label-width="100px">
+			<el-form-item label="设备名称">
+				<el-input v-model="form.name" placeholder="请输入设备名称" />
+			</el-form-item>
+			<el-form-item label="设备类型">
+				<el-select v-model="form.category" placeholder="请选择设备类型" class="w-full">
+					<el-option label="居民水表" value="waterMeter" />
+					<el-option label="非居民水表" value="pressure" />
+					<el-option label="消火栓" value="waterQuality" />
+					<el-option label="智能井盖" value="flow" />
+				</el-select>
+			</el-form-item>
+			<el-form-item label="安装位置">
+				<el-input v-model="form.location" placeholder="请输入安装位置" />
+			</el-form-item>
+			<el-form-item label="所属产品">
+				<el-select v-model="form.productId" placeholder="请选择所属产品" class="w-full">
+					<el-option label="NB-IoT智能水表" value="1" />
+					<el-option label="LoRa智能压力监测终端" value="2" />
+					<el-option label="多参数水质在线监测仪" value="3" />
+					<el-option label="超声波流量计" value="4" />
+				</el-select>
+			</el-form-item>
+			<el-form-item label="通信协议">
+				<el-select v-model="form.protocol" placeholder="请选择通信协议" class="w-full">
+					<el-option label="MQTT" value="mqtt" />
+					<el-option label="CoAP" value="coap" />
+					<el-option label="HTTP" value="http" />
+					<el-option label="TCP" value="tcp" />
+				</el-select>
+			</el-form-item>
+			<el-form-item label="备注">
+				<el-input v-model="form.description" type="textarea" placeholder="请输入备注信息" rows="3" />
+			</el-form-item>
+		</el-form>
+		<template #footer>
+			<span class="dialog-footer">
+				<el-button @click="dialogVisible = false" class="!rounded-button">取消</el-button>
+				<el-button type="primary" @click="handleSubmit" class="!rounded-button">确定</el-button>
+			</span>
+		</template>
+	</el-dialog>
+</template>
+
+<script lang="ts" setup>
+import { ref } from 'vue';
+import { Bell, Monitor, DataLine, Operation, Connection, Lock, Setting, Search, Plus, Edit, Link, Delete, Download, View } from '@element-plus/icons-vue';
+
+const dialogVisible = ref(false);
+const form = ref({
+	name: '',
+	category: '',
+	model: '标准',
+	auth: '密钥认证',
+	dataFormat: '',
+	description: ''
+});
+const deviceDialogVisible = ref(false);
+const selectedDevices = ref<string[]>([]);
+const deviceType = ref('');
+const deviceStatus = ref('');
+const deviceList = ref([
+	{
+		deviceId: '01902024001',
+		name: '东城雅苑1栋1单元101室',
+		type: '居民水表',
+		location: '东城雅苑1栋1单元101室',
+		lastOnline: '2025-02-15 14:30',
+		status: '在线'
+	},
+	{
+		deviceId: '201288533',
+		name: '百事高厂房01',
+		type: '非居民水表',
+		location: '百事高厂房',
+		lastOnline: '2025-02-15 14:25',
+		status: '在线'
+	},
+	{
+		deviceId: 'GZKFQ_LLJ_0231',
+		name: '果园二路',
+		type: '管网远传',
+		location: '果园二路',
+		lastOnline: '2025-02-14 23:45',
+		status: '离线'
+	},
+	{
+		deviceId: 'GZKFQ_LLJ_0197',
+		name: '九龙大道与开放一路交界',
+		type: '管网远传',
+		location: '九龙大道与开放一路交界',
+		lastOnline: '2025-02-15 13:15',
+		status: '故障'
+	},
+	{
+		deviceId: 'D202401150006',
+		name: 'NB-IoT智能水表 #12853',
+		type: '居民水表',
+		location: '锦绣花园3栋1单元',
+		lastOnline: '2025-02-15 14:20',
+		status: '在线'
+	},
+	{
+		deviceId: 'D202401150007',
+		name: '开创大道',
+		type: '消火栓',
+		location: '开创大道',
+		lastOnline: '2025-02-15 14:15',
+		status: '在线'
+	}
+]);
+const handleDeviceSelect = (selection: any[]) => {
+	selectedDevices.value = selection.map(item => item.id);
+};
+const handleDeviceBind = () => {
+	// 这里添加设备绑定逻辑
+	deviceDialogVisible.value = false;
+	selectedDevices.value = [];
+};
+const handleSubmit = () => {
+	// 这里添加表单提交逻辑
+	dialogVisible.value = false;
+	// 重置表单
+	form.value = {
+		name: '',
+		type: '',
+		ip: '',
+		port: '',
+		query: false,
+		timeSync: false,
+		enabled: true
+	};
+};
+const productList = ref([
+	{
+		name: 'NB-IoT智能水表',
+		category: '智能水表',
+		deviceCount: 1280,
+		model: '标准',
+		auth: '密钥认证',
+		status: true,
+		createTime: '2025-02-15 14:30:22'
+	},
+	{
+		name: 'LoRa智能压力监测终端',
+		category: '压力监测',
+		deviceCount: 526,
+		model: '自定义',
+		auth: '证书认证',
+		status: true,
+		createTime: '2025-02-14 09:15:33'
+	},
+	{
+		name: '多参数水质在线监测仪',
+		category: '水质监测',
+		deviceCount: 168,
+		model: '标准',
+		auth: '密钥认证',
+		status: true,
+		createTime: '2025-02-13 16:45:12'
+	},
+	{
+		name: '超声波流量计',
+		category: '流量监测',
+		deviceCount: 342,
+		model: '标准',
+		auth: '密钥认证',
+		status: false,
+		createTime: '2025-02-12 11:20:45'
+	},
+	{
+		name: '智能远传水表',
+		category: '智能水表',
+		deviceCount: 2156,
+		model: '标准',
+		auth: '密钥认证',
+		status: true,
+		createTime: '2025-02-11 15:55:18'
+	}
+]);
+// 删除未使用的函数
+</script>
+<style scoped>
+.el-menu {
+	border-right: none;
+}
+</style>
