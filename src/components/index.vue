@@ -87,11 +87,6 @@
                 </el-dialog>
             </template>
             <template v-else-if="activeMenu === 'shujuji'">
-                <div class="mb-4 mt-6 flex gap-2">
-                    <el-button type="primary" size="small" @click="addDialogVisible = true">新增</el-button>
-                    <el-button type="warning" size="small">修改</el-button>
-                    <el-button type="danger" size="small">删除</el-button>
-                </div>
                 <el-dialog v-model="addDialogVisible" title="新增数据集" width="400px" @close="resetAddForm">
                     <el-form :model="addForm" label-width="100px">
                         <el-form-item label="数据集名称">
@@ -113,6 +108,64 @@
                         <el-button @click="addDialogVisible = false">取消</el-button>
                     </template>
                 </el-dialog>
+                <el-dialog v-model="addDatasetDialogVisible" title="新增数据集" width="420px" @close="resetAddDatasetForm">
+                    <el-form :model="addDatasetForm" label-width="90px">
+                        <el-form-item label="页面">
+                            <el-select v-model="addDatasetForm.page" placeholder="请选择页面">
+                                <el-option label="页面1" value="页面1" />
+                                <el-option label="页面2" value="页面2" />
+                                <el-option label="页面3" value="页面3" />
+                            </el-select>
+                        </el-form-item>
+                        <el-form-item label="数据集名称">
+                            <el-input v-model="addDatasetForm.name" placeholder="请输入数据集名称" />
+                        </el-form-item>
+                        <el-form-item label="数据源名称">
+                            <el-select v-model="addDatasetForm.source" placeholder="请选择数据源">
+                                <el-option label="数据源1" value="数据源1" />
+                                <el-option label="数据源2" value="数据源2" />
+                                <el-option label="数据源3" value="数据源3" />
+                            </el-select>
+                        </el-form-item>
+                        <el-form-item label="SQL">
+                            <el-input v-model="addDatasetForm.sql" type="textarea" :rows="4" placeholder="请输入SQL" />
+                        </el-form-item>
+                    </el-form>
+                    <template #footer>
+                        <el-button @click="resetAddDatasetForm">重置</el-button>
+                        <el-button type="primary" @click="addDatasetDialogVisible = false">确认</el-button>
+                        <el-button @click="addDatasetDialogVisible = false">取消</el-button>
+                    </template>
+                </el-dialog>
+                <el-dialog v-model="editDatasetDialogVisible" title="修改数据集" width="420px" @close="resetEditDatasetForm">
+                    <el-form :model="editDatasetForm" label-width="90px">
+                        <el-form-item label="页面">
+                            <el-select v-model="editDatasetForm.page" placeholder="请选择页面">
+                                <el-option label="页面1" value="页面1" />
+                                <el-option label="页面2" value="页面2" />
+                                <el-option label="页面3" value="页面3" />
+                            </el-select>
+                        </el-form-item>
+                        <el-form-item label="数据集名称">
+                            <el-input v-model="editDatasetForm.name" placeholder="请输入数据集名称" />
+                        </el-form-item>
+                        <el-form-item label="数据源名称">
+                            <el-select v-model="editDatasetForm.source" placeholder="请选择数据源">
+                                <el-option label="数据源1" value="数据源1" />
+                                <el-option label="数据源2" value="数据源2" />
+                                <el-option label="数据源3" value="数据源3" />
+                            </el-select>
+                        </el-form-item>
+                        <el-form-item label="SQL">
+                            <el-input v-model="editDatasetForm.sql" type="textarea" :rows="4" placeholder="请输入SQL" />
+                        </el-form-item>
+                    </el-form>
+                    <template #footer>
+                        <el-button @click="resetEditDatasetForm">重置</el-button>
+                        <el-button type="primary" @click="confirmEditDataset">确认</el-button>
+                        <el-button @click="editDatasetDialogVisible = false">取消</el-button>
+                    </template>
+                </el-dialog>
                 <div class="flex gap-6">
                     <!-- 左侧目录树 -->
                     <div class="w-36 bg-white rounded shadow p-4">
@@ -127,6 +180,11 @@
                     </div>
                     <!-- 右侧数据集列表 -->
                     <div class="flex-1 bg-white rounded shadow p-4 overflow-x-auto">
+                        <div v-if="showDatasetActions" class="mb-4 mt-6 flex gap-2">
+                            <el-button type="primary" size="small" @click="addDatasetDialogVisible = true">新增</el-button>
+                            <el-button type="warning" size="small" @click="showEditDatasetDialog">修改</el-button>
+                            <el-button type="danger" size="small" @click="confirmDeleteDataset">删除</el-button>
+                        </div>
                         <el-table :data="pagedDatasetList" border style="width: 100%">
                             <el-table-column type="selection" width="40" />
                             <el-table-column prop="index" label="序号" width="60" />
@@ -145,9 +203,9 @@
                             <el-table-column label="操作" width="220">
                                 <template #default="scope">
                                     <div class="flex flex-row gap-1">
-                                        <el-button size="small" type="primary" plain style="padding: 0 8px;">数据预览</el-button>
-                                        <el-button size="small" type="info" plain style="padding: 0 8px;">数据集结构</el-button>
-                                        <el-button size="small" type="warning" plain style="padding: 0 8px;">血缘分析</el-button>
+                                        <el-button size="small" type="primary" plain style="padding: 0 8px;" :disabled="scope.row.name !== '水压统计'" @click="showPreviewDialog(scope.row)">数据预览</el-button>
+                                        <el-button size="small" type="info" plain style="padding: 0 8px;" @click="showStructDialog(scope.row)">数据集结构</el-button>
+                                        <el-button size="small" type="warning" plain style="padding: 0 8px;" :disabled="scope.row.name !== '水压统计'" @click="showLineageDialog(scope.row)">血缘分析</el-button>
                                     </div>
                                 </template>
                             </el-table-column>
@@ -211,11 +269,11 @@
                         <el-table-column prop="publishTime" label="发布时间" width="160" />
                         <el-table-column prop="type" label="发布方式" width="100" />
                         <el-table-column prop="validTime" label="有效时间" width="100" />
+                        <el-table-column prop="visitCount" label="访问次数" width="100" />
                         <el-table-column label="操作" width="300">
                             <template #default="scope">
-                                <el-button size="small" type="info" plain>访问情况</el-button>
-                                <el-button size="small" type="primary" plain>预览</el-button>
-                                <el-button size="small" type="warning" plain>修改</el-button>
+                                <el-button size="small" type="info" plain @click="showVisitDialog(scope.row)">访问情况</el-button>
+                                <el-button size="small" type="warning" plain @click="showEditDialog(scope.row)">修改</el-button>
                                 <el-button size="small" type="danger" plain>删除</el-button>
                             </template>
                         </el-table-column>
@@ -251,15 +309,101 @@
                         </el-pagination>
                     </div>
                 </div>
+                <el-dialog v-model="visitDialogVisible" title="访问情况" width="500px" @close="visitRecords=[]">
+                    <el-table :data="visitRecords" border style="width: 100%">
+                        <el-table-column prop="index" label="序号" width="60" />
+                        <el-table-column prop="ip" label="访问IP" width="180" />
+                        <el-table-column prop="time" label="访问时间" width="220" />
+                    </el-table>
+                </el-dialog>
+                <el-dialog v-model="editDialogVisible" title="修改发布信息" width="400px" @close="resetEditForm">
+                    <el-form :model="editForm" label-width="90px">
+                        <el-form-item label="发布方式">
+                            <el-select v-model="editForm.type" placeholder="请选择发布方式">
+                                <el-option label="内部" value="内部" />
+                                <el-option label="外部" value="外部" />
+                            </el-select>
+                        </el-form-item>
+                        <el-form-item label="有效时间">
+                            <el-date-picker v-model="editForm.dateRange" type="daterange" range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期" style="width: 220px;" />
+                        </el-form-item>
+                    </el-form>
+                    <template #footer>
+                        <el-button @click="resetEditForm">重置</el-button>
+                        <el-button type="primary" @click="confirmEdit">确认</el-button>
+                        <el-button @click="editDialogVisible = false">取消</el-button>
+                    </template>
+                </el-dialog>
             </template>
             <template v-else>
                 <router-view></router-view>
             </template>
         </main>
+        <el-dialog v-model="previewDialogVisible" title="数据预览" width="1100px" @close="resetPreviewDialog">
+    <div class="flex gap-6">
+        <div class="w-64 flex-shrink-0 border-r pr-6">
+            <div class="mb-2"><strong>页面：</strong> {{ previewInfo.page }}</div>
+            <div class="mb-2"><strong>数据集名称：</strong> {{ previewInfo.name }}</div>
+            <div class="mb-2"><strong>数据源名称：</strong> {{ previewInfo.source }}</div>
+            <div class="mb-2"><strong>SQL：</strong> <span class="break-all">{{ previewInfo.sql }}</span></div>
+        </div>
+        <div class="flex-1">
+            <el-table :data="previewTableData" border style="width: 100%">
+                <el-table-column prop="id" label="id" width="60" />
+                <el-table-column prop="zdbh" label="zdbh" width="160" />
+                <el-table-column prop="zdmc" label="zdmc" width="140" />
+                <el-table-column prop="cjsj" label="cjsj" width="120" />
+                <el-table-column prop="yl" label="yl" width="80" />
+                <el-table-column prop="dcdy" label="dcdy" width="80" />
+                <el-table-column prop="xhqd" label="xhqd" width="80" />
+            </el-table>
+        </div>
+    </div>
+</el-dialog>
+<el-dialog v-model="structDialogVisible" title="数据集结构" width="800px" @close="resetStructDialog">
+    <el-form label-width="60px">
+        <el-form-item label="列">
+            <el-input value="zdbh" readonly style="width: 100px;" />
+            <span style="margin: 0 8px;">类型</span>
+            <el-input value="CHARACT" readonly style="width: 100px;" />
+            <span style="margin: 0 8px;">长度</span>
+            <el-input value="20" readonly style="width: 60px;" />
+            <span style="margin: 0 8px;">默认值</span>
+            <el-input value="" readonly style="width: 100px;" />
+            <span style="margin: 0 8px;">描述</span>
+            <el-input value="" readonly style="width: 100px;" />
+        </el-form-item>
+        <el-form-item label="列">
+            <el-input value="zdmc" readonly style="width: 100px;" />
+            <span style="margin: 0 8px;">类型</span>
+            <el-input value="CHARACT" readonly style="width: 100px;" />
+            <span style="margin: 0 8px;">长度</span>
+            <el-input value="20" readonly style="width: 60px;" />
+            <span style="margin: 0 8px;">默认值</span>
+            <el-input value="" readonly style="width: 100px;" />
+            <span style="margin: 0 8px;">描述</span>
+            <el-input value="" readonly style="width: 100px;" />
+        </el-form-item>
+        <el-form-item label="列">
+            <el-input value="cjsj" readonly style="width: 100px;" />
+            <span style="margin: 0 8px;">类型</span>
+            <el-input value="DATE" readonly style="width: 100px;" />
+            <span style="margin: 0 8px;">长度</span>
+            <el-input value="0" readonly style="width: 60px;" />
+            <span style="margin: 0 8px;">默认值</span>
+            <el-input value="" readonly style="width: 100px;" />
+            <span style="margin: 0 8px;">描述</span>
+            <el-input value="" readonly style="width: 100px;" />
+        </el-form-item>
+    </el-form>
+</el-dialog>
+<el-dialog v-model="lineageDialogVisible" title="血缘分析" width="900px" @close="resetLineageDialog">
+    <div ref="lineageChartRef" style="width: 850px; height: 500px;"></div>
+</el-dialog>
     </div>
 </template>
 <script lang="ts" setup>
-import { ref, onMounted, reactive } from 'vue';
+import { ref, onMounted, reactive, nextTick } from 'vue';
 import { computed } from 'vue';
 import * as echarts from 'echarts';
 import { Monitor, DataLine, Setting, Lock, Connection, Tools, Fold, Expand, HomeFilled, Timer, Warning, TrendCharts, Odometer, DocumentDelete, Download, Edit, Refresh, Delete, Position, Collection, Link, Goods, SetUp, FolderOpened, Share, Management, Key, User, UserFilled, CircleCheck, Notebook, Guide, Bell, Document, Service } from '@element-plus/icons-vue';
@@ -289,7 +433,7 @@ function handleSelect(key, keyPath) {
     activeMenu.value = key;
 };
 
-import { ElMessage } from 'element-plus';
+import { ElMessage, ElMessageBox } from 'element-plus';
 
 const dbList = [
     { key: 'postgres', label: 'PostgreSQL', icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/postgresql/postgresql-original.svg' },
@@ -337,16 +481,24 @@ function confirm() {
 const datasetTree = [
     {
         id: 1,
-        label: '分组1',
+        label: '全部分组',
         children: [
-            { id: 11, label: '业务集1' },
-            { id: 12, label: '业务集2' },
-            { id: 13, label: '业务集3' },
+            { id: 11, label: '云上中心' },
+            { id: 12, label: '供水一体化管控主题' },
+            { id: 13, label: '供水全要素管理主题' },
+            { id: 14, label: '应急指挥主题' },
+            { id: 15, label: '来水专题' },
+            { id: 16, label: '营业主题' },
+            { id: 17, label: '客服专题' },
+            { id: 18, label: '管网专题' },
+            { id: 19, label: '水质专题' },
+            { id: 20, label: '二供专题' },
+            { id: 21, label: 'Pad端一张图' }
         ]
     }
 ];
 const treeProps = { children: 'children', label: 'label' };
-const datasetList = ref([
+const datasetListAll = [
     { index: 1, name: '水压统计', source: '水务中台数据源', createdAt: '2025-07-17 09:15', updatedAt: '2025-07-17 09:15', mode: '抽取', enabled: true },
     { index: 2, name: '水流量统计', source: '水务中台数据源', createdAt: '2025-07-17 09:15', updatedAt: '2025-07-17 09:15', mode: '实时', enabled: false },
     { index: 3, name: '今日供水量', source: '水务中台数据源', createdAt: '2025-07-17 09:15', updatedAt: '2025-07-17 09:15', mode: '实时', enabled: true },
@@ -362,9 +514,30 @@ const datasetList = ref([
     { index: 13, name: '工单统计', source: '水务中台数据源', createdAt: '2025-07-17 09:15', updatedAt: '2025-07-17 09:15', mode: '实时', enabled: false },
     { index: 14, name: '远传抄表率', source: '水务中台数据源', createdAt: '2025-07-17 09:15', updatedAt: '2025-07-17 09:15', mode: '实时', enabled: true },
     { index: 15, name: '取水量统计', source: '水务中台数据源', createdAt: '2025-07-17 09:15', updatedAt: '2025-07-17 09:15', mode: '实时', enabled: true },
-]);
+];
+const datasetList = ref([]);
+const datasetActionLabels = [
+    '云上中心',
+    '供水一体化管控主题',
+    '供水全要素管理主题',
+    '应急指挥主题',
+    '来水专题',
+    '营业主题',
+    '客服专题',
+    '管网专题',
+    '水质专题',
+    '二供专题',
+    'Pad端一张图'
+];
+const showDatasetActions = ref(false);
 function handleTreeNodeClick(node) {
-    // 这里可根据业务集筛选数据集，暂未实现
+    // 供水全要素管理主题 id:13
+    if (node.label === '供水全要素管理主题') {
+        datasetList.value = datasetListAll;
+    } else {
+        datasetList.value = [];
+    }
+    showDatasetActions.value = datasetActionLabels.includes(node.label);
 }
 
 const addDialogVisible = ref(false);
@@ -381,6 +554,20 @@ function resetAddForm() {
 function confirmAdd() {
     ElMessage.success('新增数据集成功（模拟）');
     addDialogVisible.value = false;
+}
+
+const addDatasetDialogVisible = ref(false);
+const addDatasetForm = reactive({
+    page: '',
+    name: '',
+    source: '',
+    sql: ''
+});
+function resetAddDatasetForm() {
+    addDatasetForm.page = '';
+    addDatasetForm.name = '';
+    addDatasetForm.source = '';
+    addDatasetForm.sql = '';
 }
 
 const currentPage = ref(1);
@@ -400,11 +587,11 @@ const pagedDatasetList = computed(() => {
 });
 
 const publishList = ref([
-    { index: 1, name: '水务大屏', link: 'https://example.com/canvas/1', publishTime: '2025-07-17 10:00', type: '内部', validTime: '一个月' },
-    { index: 2, name: '管网监控', link: 'https://example.com/canvas/2', publishTime: '2025-07-17 10:10', type: '外部', validTime: '三个月' },
-    { index: 3, name: '能耗分析', link: 'https://example.com/canvas/3', publishTime: '2025-07-17 10:20', type: '内部', validTime: '半年' },
-    { index: 4, name: '设备运维', link: 'https://example.com/canvas/4', publishTime: '2025-07-17 10:30', type: '外部', validTime: '一年' },
-    { index: 5, name: '水质追踪', link: 'https://example.com/canvas/5', publishTime: '2025-07-17 10:40', type: '内部', validTime: '永久' },
+    { index: 1, name: '水务大屏', link: 'https://example.com/canvas/1', publishTime: '2025-07-17 10:00', type: '内部', validTime: '2025-07-17至2025-08-16', visitCount: 123 },
+    { index: 2, name: '管网监控', link: 'https://example.com/canvas/2', publishTime: '2025-07-17 10:10', type: '外部', validTime: '2025-07-17至2025-08-16', visitCount: 88 },
+    { index: 3, name: '能耗分析', link: 'https://example.com/canvas/3', publishTime: '2025-07-17 10:20', type: '内部', validTime: '2025-07-17至2025-08-16', visitCount: 56 },
+    { index: 4, name: '设备运维', link: 'https://example.com/canvas/4', publishTime: '2025-07-17 10:30', type: '外部', validTime: '2025-07-17至2025-08-16', visitCount: 34 },
+    { index: 5, name: '水质追踪', link: 'https://example.com/canvas/5', publishTime: '2025-07-17 10:40', type: '内部', validTime: '2025-07-17至2025-08-16', visitCount: 201 },
 ]);
 
 const publishCurrentPage = ref(1);
@@ -448,5 +635,191 @@ function handlePublishSizeChange(val) {
 }
 function handlePublishCurrentChange(val) {
     publishCurrentPage.value = val;
+}
+
+const visitDialogVisible = ref(false);
+const visitRecords = ref([]);
+function showVisitDialog(row) {
+    // 模拟数据，实际可根据row加载不同数据
+    visitRecords.value = [
+        { index: 1, ip: '192.168.1.10', time: '2025-07-17 11:00:01' },
+        { index: 2, ip: '192.168.1.11', time: '2025-07-17 11:02:15' },
+        { index: 3, ip: '192.168.1.12', time: '2025-07-17 11:05:23' },
+    ];
+    visitDialogVisible.value = true;
+}
+
+const editDialogVisible = ref(false);
+const editForm = reactive({
+    index: null,
+    type: '',
+    dateRange: []
+});
+function showEditDialog(row) {
+    editForm.index = row.index;
+    editForm.type = row.type;
+    // 有效时间格式为 '2025-07-17至2025-08-16'
+    if (row.validTime && row.validTime.includes('至')) {
+        const [start, end] = row.validTime.split('至');
+        editForm.dateRange = [start.trim(), end.trim()];
+    } else {
+        editForm.dateRange = [];
+    }
+    editDialogVisible.value = true;
+}
+function resetEditForm() {
+    editForm.type = '';
+    editForm.dateRange = [];
+}
+function confirmEdit() {
+    // 找到对应行并更新
+    const idx = publishList.value.findIndex(item => item.index === editForm.index);
+    if (idx !== -1) {
+        publishList.value[idx].type = editForm.type;
+        if (editForm.dateRange.length === 2) {
+            publishList.value[idx].validTime = `${editForm.dateRange[0]}至${editForm.dateRange[1]}`;
+        }
+    }
+    editDialogVisible.value = false;
+}
+
+const editDatasetDialogVisible = ref(false);
+const editDatasetForm = reactive({
+    page: '',
+    name: '',
+    source: '',
+    sql: '',
+    index: null
+});
+function showEditDatasetDialog() {
+    // 这里只做演示，实际应选中某一行后再编辑
+    // 这里默认编辑第一条数据
+    const row = datasetList.value[0];
+    if (!row) return;
+    editDatasetForm.page = '页面1'; // 这里可根据实际数据回显
+    editDatasetForm.name = row.name;
+    editDatasetForm.source = '数据源1';
+    editDatasetForm.sql = row.sql || '';
+    editDatasetForm.index = row.index;
+    editDatasetDialogVisible.value = true;
+}
+function resetEditDatasetForm() {
+    editDatasetForm.page = '';
+    editDatasetForm.name = '';
+    editDatasetForm.source = '';
+    editDatasetForm.sql = '';
+    editDatasetForm.index = null;
+}
+function confirmEditDataset() {
+    // 更新数据
+    const idx = datasetList.value.findIndex(item => item.index === editDatasetForm.index);
+    if (idx !== -1) {
+        datasetList.value[idx].name = editDatasetForm.name;
+        datasetList.value[idx].source = editDatasetForm.source;
+        datasetList.value[idx].sql = editDatasetForm.sql;
+        // 页面字段如需保存可扩展
+    }
+    editDatasetDialogVisible.value = false;
+    ElMessage.success('修改成功');
+}
+function confirmDeleteDataset() {
+    // 这里只做演示，实际应选中某一行后再删除
+    if (!datasetList.value.length) return;
+    ElMessageBox.confirm('确定要删除该数据集吗？', '提示', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning',
+    }).then(() => {
+        datasetList.value.splice(0, 1); // 实际应删除选中行
+        ElMessage.success('删除成功');
+    });
+}
+
+const previewDialogVisible = ref(false);
+const previewInfo = reactive({
+    page: '',
+    name: '',
+    source: '',
+    sql: ''
+});
+const previewTableData = ref([]);
+function showPreviewDialog(row) {
+    if (row.name !== '水压统计') return;
+    previewInfo.page = '页面1';
+    previewInfo.name = '水压统计';
+    previewInfo.source = '水务中台数据源';
+    previewInfo.sql = 'select * from gzsw';
+    previewTableData.value = [
+        { id: 1, zdbh: 'GZKFQ_XF_0203', zdmc: '翠光街4号', cjsj: '2025-07-17', yl: 0.269, dcdy: 3.67, xhqd: -79 }
+    ];
+    previewDialogVisible.value = true;
+}
+function resetPreviewDialog() {
+    previewInfo.page = '';
+    previewInfo.name = '';
+    previewInfo.source = '';
+    previewInfo.sql = '';
+    previewTableData.value = [];
+}
+
+const structDialogVisible = ref(false);
+function showStructDialog(row) {
+    if (row.name !== '水压统计') return;
+    structDialogVisible.value = true;
+}
+function resetStructDialog() {
+    structDialogVisible.value = false;
+}
+
+const lineageDialogVisible = ref(false);
+const lineageChartRef = ref(null);
+let lineageChartInstance = null;
+function showLineageDialog(row) {
+    if (row.name !== '水压统计') return;
+    lineageDialogVisible.value = true;
+    nextTick(() => {
+        if (!lineageChartInstance && lineageChartRef.value) {
+            lineageChartInstance = echarts.init(lineageChartRef.value);
+        }
+        const option = {
+            tooltip: {},
+            series: [{
+                type: 'graph',
+                layout: 'force',
+                roam: true,
+                symbolSize: 70,
+                label: { show: true },
+                edgeSymbol: ['none', 'arrow'],
+                edgeSymbolSize: [4, 10],
+                force: { repulsion: 400, edgeLength: 120 },
+                data: [
+                    { name: '水务中台数据源', x: 100, y: 250 },
+                    { name: '水压统计', x: 300, y: 250 },
+                    { name: '柱状图-今日供水量', x: 500, y: 150 },
+                    { name: '饼图-今日供水量', x: 500, y: 250 },
+                    { name: '面积图-今日供水量', x: 500, y: 350 },
+                    { name: '云上中心', x: 700, y: 150 },
+                    { name: '营业主题', x: 700, y: 250 }
+                ],
+                links: [
+                    { source: '水务中台数据源', target: '水压统计' },
+                    { source: '水压统计', target: '柱状图-今日供水量' },
+                    { source: '水压统计', target: '饼图-今日供水量' },
+                    { source: '水压统计', target: '面积图-今日供水量' },
+                    { source: '柱状图-今日供水量', target: '云上中心' },
+                    { source: '面积图-今日供水量', target: '云上中心' },
+                    { source: '饼图-今日供水量', target: '营业主题' }
+                ],
+                lineStyle: { color: '#aaa' }
+            }]
+        };
+        lineageChartInstance.setOption(option);
+    });
+}
+function resetLineageDialog() {
+    if (lineageChartInstance) {
+        lineageChartInstance.dispose();
+        lineageChartInstance = null;
+    }
 }
 </script>
